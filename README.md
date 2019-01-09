@@ -10,3 +10,7 @@ Then compile the .class files into a .jar file
 ```
 jar cfm FileTransferManager.jar manifest.txt *.class
 ```
+# Executing Jar
+```
+java -jar FileTransferManager.jar
+```
