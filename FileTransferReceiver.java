@@ -252,6 +252,14 @@ public class FileTransferReceiver {
     }
 
     /**
+     * Switches synchronicity
+     * @param shouldUseAsync true for asynchronous false for synchronous
+     */
+    public void setAsync(boolean shouldUseAsync){
+        this.usingAsync = shouldUseAsync;
+    }
+
+    /**
      * Returns if this file receiver is functioning asynchronously
      * @return true is asynchronous
      */
@@ -260,7 +268,7 @@ public class FileTransferReceiver {
     }
 
     private class GeneralThread implements Runnable {
-        Consumer consumer;
+        Consumer<Object> consumer;
         Object object;
         Thread thread;
     

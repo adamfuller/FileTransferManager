@@ -189,12 +189,15 @@ public class FileTransferSender {
         fc.showOpenDialog(new JButton());
 
         this.chosenFile = fc.getSelectedFile();
+        if (chosenFile == null){
+            return null;
+        }
         try{
             this.chosenFilePath = this.chosenFile.getCanonicalPath();
+            this.chosenFilename = this.chosenFile.getName();
         }catch (Exception e){
             e.printStackTrace();
         }
-        this.chosenFilename = this.chosenFile.getName();
         return this.chosenFile;
     }
 
@@ -203,10 +206,12 @@ public class FileTransferSender {
      * @return
      */
     public boolean sendChosenFile(){
-        if (this.chosenFile == null){
+        if (this.chosenFile == null || this.chosenFilePath == null || this.chosenFilename == null){
             return false;
         }
-        return this.sendString(this.chosenFilename) && this.sendFile(this.chosenFilePath);
+        boolean stringSent = this.sendString(this.chosenFilename);
+        boolean fileSent = this.sendFile(this.chosenFilePath);
+        return stringSent && fileSent;
     }
 
     /**
@@ -224,8 +229,12 @@ public class FileTransferSender {
         this.isAsync = shouldUseAsync;
     }
 
+    public boolean hasTarget(){
+        return !this.targetIP.equals("localhost");
+    }
+
     private class GeneralThread implements Runnable {
-        Consumer consumer;
+        Consumer<Object> consumer;
         Object object;
         Thread thread;
     

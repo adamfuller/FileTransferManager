@@ -1,20 +1,10 @@
-import java.awt.BorderLayout;
-import java.awt.Component;
-import java.awt.ComponentOrientation;
 import java.awt.Container;
-import java.awt.FlowLayout;
-import java.awt.Graphics;
-import java.awt.GridLayout;
-import java.awt.Insets;
 import java.util.function.Consumer;
 
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
-import javax.swing.JPanel;
 import javax.swing.SpringLayout;
-import javax.swing.SwingConstants;
-import javax.swing.border.Border;
 
 public class FileTransferManager{
     private FileTransferReceiver fileTransferReceiver; // start receiver without searching
@@ -72,6 +62,9 @@ public class FileTransferManager{
 
     public void sendFile(){
         fileTransferSender.pickFile();
+        if (!fileTransferSender.hasTarget()){
+            fileTransferSender.listen();
+        }
         fileTransferSender.sendChosenFile();
     }
 
@@ -80,16 +73,24 @@ public class FileTransferManager{
     }
 
     public void findSender(JLabel prompt, JButton button){
+        this.findSender(prompt, button, this.isAsync);
+    }
+
+    public void findSender(JLabel prompt, JButton button, boolean useAsync){
+        if (useAsync){
+            newThread((n)->{
+                this.findSender(prompt, button, false);
+            });
+            return;
+        }
         this.isSearchingForSender = true;
-        this.newThread((n)->{
-            if (prompt != null) { prompt.setText("Looking for sender..."); };
-            if (button != null) { button.setEnabled(false); };
-            fileTransferReceiver.findSender();
-            if (button != null) { button.setEnabled(true); };
-            prompt.setText("Sender found");
-            if (prompt != null) { prompt.setText("Sender found"); };
-            this.isSearchingForSender = false;
-        });
+        if (prompt != null) { prompt.setText("Looking for sender..."); };
+        if (button != null) { button.setEnabled(false); };
+        fileTransferReceiver.findSender();
+        if (button != null) { button.setEnabled(true); };
+        prompt.setText("Sender found");
+        if (prompt != null) { prompt.setText("Sender found"); };
+        this.isSearchingForSender = false;
     }
 
     public void listen(){
@@ -97,6 +98,16 @@ public class FileTransferManager{
     }
 
     public void listen(JLabel prompt, JButton source){
+        this.listen(prompt, source, this.isAsync);
+    }
+
+    public void listen(JLabel prompt, JButton source, boolean useAsync){
+        if (useAsync){
+            newThread((n)->{
+                this.listen(prompt, source, false);
+            });
+            return;
+        }
         this.isListeningForReceiver = true;
         if (prompt != null ) { prompt.setText("Listening for receiver..."); };
         if (source != null ) { source.setEnabled(false); };
@@ -119,8 +130,18 @@ public class FileTransferManager{
         }).start();
     }
 
+    /**
+     * Set the methods to be syncrhonous as well as receiver and sender methods
+     * @param isAsync
+     */
+    public void setAsync(boolean isAsync){
+        this.isAsync = isAsync;
+        this.fileTransferReceiver.setAsync(isAsync);
+        this.fileTransferSender.setAsync(isAsync);
+    }
+
     public static void main(String args[]){
-        FileTransferManager fileTransferManager = new FileTransferManager(false, 0, true);
+        FileTransferManager fileTransferManager = new FileTransferManager(false, 0, false);
 
         JFrame frame = new JFrame("File Transfer Manager");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
