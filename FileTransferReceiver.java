@@ -2,23 +2,17 @@
 */
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.beans.PropertyChangeListener;
 import java.io.BufferedOutputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.time.Duration;
-import java.time.Instant;
-import java.util.ArrayList;
 import java.util.Scanner;
 import java.util.function.Consumer;
 
-import javax.swing.Action;
 import javax.swing.JButton;
 import javax.swing.JFrame;
-import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
 public class FileTransferReceiver {
