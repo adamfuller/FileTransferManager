@@ -61,11 +61,25 @@ public class FileTransferManager{
     }
 
     public void sendFile(){
+        this.sendFile(null, null);
+    }
+
+    public void sendFile(JLabel prompt, JButton button){
+        button.setEnabled(false);
         fileTransferSender.pickFile();
         if (!fileTransferSender.hasTarget()){
-            fileTransferSender.listen();
+            this.listen(prompt, button, true);
         }
-        fileTransferSender.sendChosenFile();
+        newThread((n)->{
+            while (!fileTransferSender.hasTarget()){
+                try{Thread.sleep(10);}catch(Exception e){}
+            }
+            if (prompt != null) { prompt.setText("Sending File..."); };
+            fileTransferSender.sendChosenFile();
+            if (prompt != null) { prompt.setText("File Sent"); };
+            button.setEnabled(true);
+        });
+        
     }
 
     public void findSender(){
@@ -165,7 +179,7 @@ public class FileTransferManager{
         });
 
         fileSendButton.addActionListener((a)->{
-            fileTransferManager.sendFile();
+            fileTransferManager.sendFile(prompt, (JButton) a.getSource());
         });
 
         findSenderButton.addActionListener((a)->{
