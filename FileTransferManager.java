@@ -79,6 +79,12 @@ public class FileTransferManager{
             if (prompt != null) { prompt.setText("File Sent"); };
             button.setEnabled(true);
         });
+        // newThread((n)->{
+        //     while(!button.isEnabled()){
+        //         prompt.setText("Sending... " + fileTransferSender.getProgress() + "%");
+        //         try{ Thread.sleep(10); } catch (Exception e){ }
+        //     }
+        // });
         
     }
 

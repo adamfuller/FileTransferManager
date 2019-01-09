@@ -25,6 +25,7 @@ public class FileTransferSender {
     private int numConnections;
     public File chosenFile;
     public String chosenFilePath, chosenFilename;
+    private int percentProgress = 0;
 
     /**
      * Create FileTransferSender with default number of available connections
@@ -167,6 +168,7 @@ public class FileTransferSender {
                 socketOutputStream.write(contents);
                 if (((current * 100) / fileLength - lastPercent) > 1) {
                     System.out.println("Sending file ... " + (current * 100) / fileLength + "% complete!");
+                    this.percentProgress = (int) lastPercent;
                     lastPercent = (current * 100) / fileLength;
                 }
             }
@@ -231,6 +233,14 @@ public class FileTransferSender {
 
     public boolean hasTarget(){
         return !this.targetIP.equals("localhost");
+    }
+
+    /**
+     * Returns percent of file sent
+     * @return
+     */
+    public int getProgress(){
+        return this.percentProgress;
     }
 
     private class GeneralThread implements Runnable {
