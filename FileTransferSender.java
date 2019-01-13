@@ -1,4 +1,6 @@
-/* Version 2
+/* 
+    Vers:   1.0.1   Added delimiter, switch handshake to array to send extra info
+    Vers:   1.0.0   Initial coding send/listen for receiver
 */
 import java.io.BufferedInputStream;
 import java.io.File;
@@ -16,8 +18,10 @@ import javax.swing.JFrame;
 public class FileTransferSender {
     private boolean isAsync = false;
     private String selfIP, ipRange;
+    private String username = "USER_" + Math.round((float) (200.0 * Math.random()) );
     private String targetIP = "localhost";
     private String hostCode = "ADAM";
+    private String delimiter = "|";
     private int initPort = 4999;
     private int filePort = 5000;
     private int stringPort = 5001;
@@ -86,7 +90,14 @@ public class FileTransferSender {
             this.targetIP = socket.getInetAddress().getHostAddress();
             // System.out.println("Sender: " + this.targetIP);
             OutputStream os = socket.getOutputStream();
-            os.write(this.hostCode.getBytes());
+            StringBuilder initHandshake = new StringBuilder();
+
+            initHandshake.append(this.hostCode); // add host code
+            initHandshake.append(this.delimiter); // split
+            initHandshake.append(this.username); // add username
+            initHandshake.append(this.delimiter); // split
+            
+            os.write(initHandshake.toString().getBytes()); // send handshake
             os.flush();
             os.close();
             socket.close();

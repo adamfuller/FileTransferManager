@@ -1,4 +1,6 @@
-/* Version 2
+/* 
+    Vers:   1.0.1   Added delimiter switch handshake to array
+    Vers:   1.0.0   Initial coding receive/find sender
 */
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -26,6 +28,7 @@ public class FileTransferReceiver {
     private int filePort = 5000;
     private int stringPort = 5001;
     private String hostCode = "ADAM";
+    private String delimiter = "\\|"; // regex delimiter
 
     /* Ports
     init: 4999
@@ -101,11 +104,17 @@ public class FileTransferReceiver {
                 scanner.close();
                 iS.close();
 
-                String hostCheck = stringBuilder.toString();
-                // System.out.println(hostCheck);
-                if (hostCheck != null && hostCheck.equals(this.hostCode)){
+                String initHandshake[] = stringBuilder.toString().split(this.delimiter); // split handshake by delimiter
+
+                if (initHandshake != null && initHandshake[0].contains(this.hostCode)){
                     senderFound = true;
                     break;
+                } else {
+                    System.out.println("Handshake of length " + initHandshake.length);
+                    System.out.println("Failed handshake with ");
+                    for (String s: initHandshake){
+                        System.out.print(s);
+                    }
                 }
 
             }catch(Exception e){
