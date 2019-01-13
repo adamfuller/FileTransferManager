@@ -178,8 +178,42 @@ public class FileTransferManager{
         return this.onNo;
     }
 
+    /**
+     * Update the username
+     * @param username - new username
+     */
+    public void setUsername(String username){
+        this.fileTransferSender.setUsername(username);
+        this.fileTransferReceiver.setUsername(username);
+    }
+
+    /**
+     * Get username if they match between sending and receiving
+     * @return
+     */
+    public String getUsername(){
+        String senderUser = fileTransferSender.getUsername();
+        String receiverUser = fileTransferReceiver.getUsername();
+
+
+        if (senderUser.equals(receiverUser)){
+            return senderUser;
+        } else {
+            return "Receiving: " + receiverUser + " Sending: " + senderUser;
+        }
+    }
+
     public static void main(String args[]){
         FileTransferManager fileTransferManager = new FileTransferManager(false, 0, false);
+        JLabel prompt = new JLabel("Welcome to the File Transfer Manager");
+
+        UsernameDialog usernameDialog = new UsernameDialog((self)->{
+            UsernameDialog dialog = (UsernameDialog) self;
+            fileTransferManager.setUsername(dialog.getUsername());
+            if (prompt != null){
+                prompt.setText("Welcome to the File Transfer Manager, " + dialog.getUsername());
+            }
+        });
 
         JFrame frame = new JFrame("File Transfer Manager");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -189,8 +223,6 @@ public class FileTransferManager{
         // frame.setComponentOrientation(ComponentOrientation.LEFT_TO_RIGHT);
         SpringLayout layout = new SpringLayout();
         
-        
-        JLabel prompt = new JLabel("Welcome to the File Transfer Manager");
         // promptLabel.setHorizontalAlignment(SwingConstants.CENTER);
 
         JButton fileReceiveButton = new JButton("Receive File");
@@ -273,7 +305,11 @@ public class FileTransferManager{
         // hide yes and no buttons until needed
         yesButton.setVisible(false);
         noButton.setVisible(false);
-
+        while (!usernameDialog.hasChosenUsername()){
+            try{
+                Thread.sleep(10);
+            } catch(Exception e){}
+        }
         frame.setVisible(true);
     }
 }

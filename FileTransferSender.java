@@ -254,6 +254,22 @@ public class FileTransferSender {
         return this.percentProgress;
     }
 
+    /**
+     * Update the username
+     * @param username
+     */
+    public void setUsername(String username){
+        this.username = username;
+    }
+
+    /**
+     * Get the current username
+     * @return
+     */
+    public String getUsername(){
+        return this.username;
+    }
+
     private class GeneralThread implements Runnable {
         Consumer<Object> consumer;
         Object object;

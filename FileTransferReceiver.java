@@ -19,7 +19,7 @@ import javax.swing.Timer;
 
 public class FileTransferReceiver {
     private String targetIP = "localhost";
-    private String ipRange, selfIP, senderUsername;
+    private String ipRange, selfIP, senderUsername, username;
     private boolean usingAsync = false;
     private boolean isLookingForSender = false;
 
@@ -277,6 +277,18 @@ public class FileTransferReceiver {
      */
     public boolean isAsync(){
         return this.usingAsync;
+    }
+
+    /**
+     * Update the username
+     * @param username - new username
+     */
+    public void setUsername(String username){
+        this.username = username;
+    }
+
+    public String getUsername(){
+        return this.username;
     }
 
     private class GeneralThread implements Runnable {
