@@ -1,4 +1,5 @@
 import java.awt.Container;
+import java.awt.event.ActionEvent;
 import java.util.function.Consumer;
 
 import javax.swing.JButton;
@@ -14,6 +15,7 @@ public class FileTransferManager{
     private boolean receiverConnected = false;
     private boolean senderConnected = false;
     private boolean isAsync = false;
+    private Consumer<ActionEvent> onYes, onNo; // consumers for Yes and No buttons
 
     public FileTransferManager(boolean listen, int numConnections, boolean isAsync){
         this.isAsync = isAsync;
@@ -43,7 +45,7 @@ public class FileTransferManager{
                     while(!fileTransferReceiver.hasFoundSender()){try{Thread.sleep(10);}catch(Exception e){}}
                     if (prompt != null) { prompt.setText("Sender Found"); };
                 }
-                if (prompt != null) { prompt.setText("Receiving File from " + fileTransferReceiver.getSenderIP() + " ..."); };
+                if (prompt != null) { prompt.setText("Receiving File from " + fileTransferReceiver.getSenderUsername() + " ..."); };
 
                 // should have a sender by now
                 if (fileTransferReceiver.receiveFile(fileTransferReceiver.receiveString())){
@@ -160,6 +162,22 @@ public class FileTransferManager{
         this.fileTransferSender.setAsync(isAsync);
     }
 
+    /**
+     * Get Consumer for the yes button
+     * @return
+     */
+    public Consumer<ActionEvent> getOnYes(){
+        return this.onYes;
+    }
+
+    /**
+     * Get Consumer for the no button
+     * @return
+     */
+    public Consumer<ActionEvent> getOnNo(){
+        return this.onNo;
+    }
+
     public static void main(String args[]){
         FileTransferManager fileTransferManager = new FileTransferManager(false, 0, false);
 
@@ -179,6 +197,8 @@ public class FileTransferManager{
         JButton fileSendButton = new JButton("Send File");
         JButton findSenderButton = new JButton("Find Sender");
         JButton listenForReceiverButton = new JButton("Wait for Receiver");
+        JButton yesButton = new JButton("Yes");
+        JButton noButton = new JButton("No");
 
         fileReceiveButton.addActionListener((a)->{
             fileTransferManager.receiveFile(prompt, (JButton) a.getSource());
@@ -196,7 +216,20 @@ public class FileTransferManager{
             fileTransferManager.listen(prompt, (JButton) a.getSource());
         });
 
+        yesButton.addActionListener((a) -> { 
+            if (fileTransferManager.getOnYes() != null){
+                fileTransferManager.getOnYes().accept((ActionEvent) a);
+            }
+         });
+        
+        noButton.addActionListener((a) -> { 
+            if (fileTransferManager.getOnNo() != null){
+                fileTransferManager.getOnNo().accept((ActionEvent) a);
+            }
+        });
+
         frame.add(prompt);
+
         Container contentPane = frame.getContentPane();
         // set the prompt
         layout.putConstraint( SpringLayout.NORTH, prompt, 8, SpringLayout.NORTH,   contentPane);
@@ -220,6 +253,13 @@ public class FileTransferManager{
         layout.putConstraint(SpringLayout.EAST, listenForReceiverButton, -14, SpringLayout.EAST, contentPane);
         layout.putConstraint(SpringLayout.HORIZONTAL_CENTER, fileSendButton, 0, SpringLayout.HORIZONTAL_CENTER, listenForReceiverButton);
 
+        // set the yes button
+        layout.putConstraint(SpringLayout.NORTH, yesButton, 14, SpringLayout.SOUTH, findSenderButton);
+        layout.putConstraint(SpringLayout.HORIZONTAL_CENTER, yesButton, 0, SpringLayout.HORIZONTAL_CENTER, findSenderButton);
+
+        // set the no button
+        layout.putConstraint(SpringLayout.NORTH, noButton, 14, SpringLayout.SOUTH, listenForReceiverButton);
+        layout.putConstraint(SpringLayout.HORIZONTAL_CENTER, noButton, 0, SpringLayout.HORIZONTAL_CENTER, listenForReceiverButton);
 
         frame.setLayout(layout);
 
@@ -227,6 +267,12 @@ public class FileTransferManager{
         frame.add(fileSendButton);
         frame.add(findSenderButton);
         frame.add(listenForReceiverButton);
+        frame.add(yesButton);
+        frame.add(noButton);
+        
+        // hide yes and no buttons until needed
+        yesButton.setVisible(false);
+        noButton.setVisible(false);
 
         frame.setVisible(true);
     }

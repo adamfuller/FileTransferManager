@@ -19,7 +19,7 @@ import javax.swing.Timer;
 
 public class FileTransferReceiver {
     private String targetIP = "localhost";
-    private String ipRange, selfIP;
+    private String ipRange, selfIP, senderUsername;
     private boolean usingAsync = false;
     private boolean isLookingForSender = false;
 
@@ -108,6 +108,7 @@ public class FileTransferReceiver {
 
                 if (initHandshake != null && initHandshake[0].contains(this.hostCode)){
                     senderFound = true;
+                    this.senderUsername = initHandshake.length >=2 ? initHandshake[1] : "Unknown User";
                     break;
                 } else {
                     System.out.println("Handshake of length " + initHandshake.length);
@@ -236,6 +237,14 @@ public class FileTransferReceiver {
      */
     public String getSenderIP(){
         return this.targetIP;
+    }
+
+    /**
+     * Return sender's username or "Unknown User" if none is sent
+     * @return Username of the sender
+     */
+    public String getSenderUsername(){
+        return this.senderUsername;
     }
 
     /**
