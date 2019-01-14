@@ -7,6 +7,7 @@ import java.awt.event.ActionListener;
 import java.io.BufferedOutputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
@@ -154,7 +155,7 @@ public class FileTransferReceiver {
         }
         try{
             Socket stringSocket = new Socket();
-            stringSocket.connect(new InetSocketAddress(InetAddress.getByName(this.targetIP), this.stringPort), 300);
+            stringSocket.connect(new InetSocketAddress(InetAddress.getByName(this.targetIP), this.stringPort), 1000);
             InputStream stringInputStream = stringSocket.getInputStream();
             Scanner scanner = new Scanner(stringInputStream);
             Scanner delimitedScanner = scanner.useDelimiter("\\A");
@@ -172,6 +173,52 @@ public class FileTransferReceiver {
         } catch (Exception e){
             return null;
         }   
+    }
+
+    /**
+     * Reject the incoming file
+     * @return
+     */
+    public boolean rejectFile(){
+        try{
+            Socket stringSocket = new Socket();
+            stringSocket.connect(new InetSocketAddress(InetAddress.getByName(this.targetIP), this.stringPort), 500);
+            // Get socket's output stream
+            OutputStream socketOutputStream = stringSocket.getOutputStream();
+            socketOutputStream.write("NO".getBytes());
+
+            socketOutputStream.flush();
+            socketOutputStream.close();
+            stringSocket.close();
+            return true;
+        } catch (Exception e){
+            e.printStackTrace();
+            return false;
+        }
+        
+    }
+
+    /**
+     * Reject the incoming file
+     * @return
+     */
+    public boolean acceptFile(){
+        try{
+            Socket stringSocket = new Socket();
+            InetSocketAddress targetAddress = new InetSocketAddress(InetAddress.getByName(this.targetIP), this.stringPort);
+            stringSocket.connect(targetAddress, 500);
+            // Get socket's output stream
+            OutputStream socketOutputStream = stringSocket.getOutputStream();
+            socketOutputStream.write("YES".getBytes());
+            socketOutputStream.flush();
+            socketOutputStream.close();
+            stringSocket.close();
+            return true;
+        } catch (Exception e){
+            e.printStackTrace();
+            return false;
+        }
+        
     }
 
 
@@ -198,7 +245,9 @@ public class FileTransferReceiver {
             return false;
         }
         try{
-            Socket socket = new Socket(InetAddress.getByName(this.targetIP), this.filePort);
+            Socket socket = new Socket();
+            InetSocketAddress targetAddress = new InetSocketAddress(InetAddress.getByName(this.targetIP), this.filePort);
+            socket.connect(targetAddress, 500);
             byte[] contents = new byte[10000];
 
             FileOutputStream fos = new FileOutputStream(filename);
@@ -218,6 +267,7 @@ public class FileTransferReceiver {
             is.close();
             return true;
         } catch (Exception e){
+            e.printStackTrace();
             return false;
         }
         

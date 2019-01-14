@@ -16,6 +16,7 @@ public class FileTransferManager{
     private boolean senderConnected = false;
     private boolean isAsync = false;
     private Consumer<ActionEvent> onYes, onNo; // consumers for Yes and No buttons
+    private JButton yesButton, noButton;
 
     public FileTransferManager(boolean listen, int numConnections, boolean isAsync){
         this.isAsync = isAsync;
@@ -29,10 +30,67 @@ public class FileTransferManager{
         this(listen, numConnections, false);
     }
 
+    public void setYesAndNoButtons(JButton yesButton, JButton noButton){
+        this.yesButton = yesButton;
+        this.noButton = noButton;
+    }
+
+    public void activateYesAndNo(){
+        if ( yesButton != null ){ 
+            yesButton.setVisible(true);
+            yesButton.setEnabled(true);
+        }
+        if (noButton != null){
+            noButton.setVisible(true);
+            noButton.setEnabled(true);
+        }
+    }
+
+    public void disableYesAndNo(){
+        if ( yesButton != null ){ 
+            yesButton.setVisible(false);
+            yesButton.setEnabled(false);
+            onYes = null;
+        }
+        if (noButton != null){
+            noButton.setVisible(false);
+            noButton.setEnabled(false);
+            onNo = null;
+        }
+    }
+
     public void receiveFile(){
         this.receiveFile(null, null);
     }
 
+    /**
+     * Actual file retreival portion of receiveFile
+     * @param prompt - prompt for the user
+     * @param source - button that activated the receiveFile method
+     */
+    public void getTheFile(JLabel prompt, JButton source){
+        if (prompt != null) { prompt.setText("Receiving File from " + fileTransferReceiver.getSenderUsername() + "..."); };
+        // should have a sender by now
+        String filename = fileTransferReceiver.receiveString();
+        if (fileTransferReceiver.receiveFile(filename)){
+            if (prompt != null) { prompt.setText("File Received"); };
+        } else if (fileTransferReceiver.isAsync()) {
+            // File is downloading in background
+            // promptLabel.setText("File Downloading...");
+
+        } else {
+            if (prompt != null) { prompt.setText("File Failed to Download"); };
+            System.out.println(filename + " failed to download");
+            
+        }
+        if (source != null ){ source.setEnabled(true); };
+    }
+
+    /**
+     * Method to start the file retrieving process
+     * @param prompt - prompt to provide user with info
+     * @param source - button that activated this method
+     */
     public void receiveFile(JLabel prompt, JButton source){
         if (source != null ){ source.setEnabled(false); };
         new Thread(new Runnable(){
@@ -45,20 +103,39 @@ public class FileTransferManager{
                     while(!fileTransferReceiver.hasFoundSender()){try{Thread.sleep(10);}catch(Exception e){}}
                     if (prompt != null) { prompt.setText("Sender Found"); };
                 }
-                if (prompt != null) { prompt.setText("Receiving File from " + fileTransferReceiver.getSenderUsername() + " ..."); };
-
-                // should have a sender by now
-                if (fileTransferReceiver.receiveFile(fileTransferReceiver.receiveString())){
-                    if (prompt != null) { prompt.setText("File Received"); };
-                } else if (fileTransferReceiver.isAsync()) {
-                    // File is downloading in background
-                    // promptLabel.setText("File Downloading...");
-
-                } else {
-                    if (prompt != null) { prompt.setText("File Failed to Download"); };
+                
+                if (yesButton == null || noButton == null){
+                    getTheFile(prompt, source);
+                    return;
                 }
-                if (source != null ){ source.setEnabled(true); };
+
+                if (prompt != null) { prompt.setText("Receive a file from " + fileTransferReceiver.getSenderUsername() + "?"); };
+                
+                
+
+                onYes = (n)->{
+                    disableYesAndNo();
+                    newThread((n_)->{
+                        if (fileTransferReceiver.acceptFile()){
+                            try{Thread.sleep(500);}catch(Exception e){}
+                            getTheFile(prompt, source);
+                        };
+                    });
+                };
+
+                onNo = (n)->{ // let the sender know the file isn't wanted
+                    disableYesAndNo();
+                    newThread((n_)->{
+                        fileTransferReceiver.rejectFile();
+                    });
+                    if (source != null ){ source.setEnabled(true); };
+                };
+
+                activateYesAndNo();
+
             }
+
+                
         }).start();
     }
 
@@ -72,13 +149,20 @@ public class FileTransferManager{
         if (!fileTransferSender.hasTarget()){
             this.listen(prompt, button, true);
         }
+
         newThread((n)->{
             while (!fileTransferSender.hasTarget()){
                 try{Thread.sleep(10);}catch(Exception e){}
             }
-            if (prompt != null) { prompt.setText("Sending File..."); };
-            fileTransferSender.sendChosenFile();
-            if (prompt != null) { prompt.setText("File Sent"); };
+            if (fileTransferSender.receiveString().equals("YES")){
+                System.out.println("Receiver accepted file");
+                if (prompt != null) { prompt.setText("Sending File..."); };
+                System.out.println(String.valueOf(fileTransferSender.sendChosenFile()) + " - Send chosen file result");
+                if (prompt != null) { prompt.setText("File Sent"); };
+            } else {
+                if (prompt != null) { prompt.setText("File Rejected :("); };
+                System.out.println("Sender Rejected");
+            }
             button.setEnabled(true);
         });
         // newThread((n)->{
@@ -231,6 +315,8 @@ public class FileTransferManager{
         JButton listenForReceiverButton = new JButton("Wait for Receiver");
         JButton yesButton = new JButton("Yes");
         JButton noButton = new JButton("No");
+
+        fileTransferManager.setYesAndNoButtons(yesButton, noButton);
 
         fileReceiveButton.addActionListener((a)->{
             fileTransferManager.receiveFile(prompt, (JButton) a.getSource());

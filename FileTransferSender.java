@@ -5,11 +5,14 @@
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.function.Consumer;
+import java.util.Scanner;
 
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
@@ -104,9 +107,37 @@ public class FileTransferSender {
             waitServerSocket.close();
             return true;
         }catch (Exception e){
+            e.printStackTrace();
             return false;
         }
     }
+
+    public String receiveString(){
+        try{
+            ServerSocket ssock = new ServerSocket(this.stringPort, 8);
+            // new ServerSocket(port, backlog, bindAddr)
+            Socket stringSocket = ssock.accept();
+            InputStream stringInputStream = stringSocket.getInputStream();
+            Scanner scanner = new Scanner(stringInputStream);
+            Scanner delimitedScanner = scanner.useDelimiter("\\A");
+    
+            StringBuilder stringBuilder = new StringBuilder();
+    
+            while (delimitedScanner.hasNext()){
+                stringBuilder.append(delimitedScanner.next());
+            }
+            stringSocket.close();
+            delimitedScanner.close();
+            scanner.close();
+            stringInputStream.close();
+            ssock.close();
+            return stringBuilder.toString();
+        }catch (Exception e){
+            e.printStackTrace();
+            return "";
+        }
+    }
+
 
     /**
      * Send a string over port 5001
@@ -118,21 +149,26 @@ public class FileTransferSender {
         try {
             // Initialize Sockets
             // ServerSocket ssock = new ServerSocket(5001);
-            ServerSocket ssock = new ServerSocket(this.stringPort, 2);
+            ServerSocket ssock = new ServerSocket(this.stringPort, 8);
             // new ServerSocket(port, backlog, bindAddr)
+            System.out.println("before accept");
             Socket socket = ssock.accept();
+            System.out.println("Accepted");
 
             // Get socket's output stream
             OutputStream socketOutputStream = socket.getOutputStream();
+            System.out.println("Output stream opened");
             socketOutputStream.write(string.getBytes());
-
+            System.out.println("String written");
             socketOutputStream.flush();
+            socketOutputStream.close();
             // File transfer done. Close the socket connection!
             socket.close();
             ssock.close();
             System.out.println("String sent");
             return true;
         } catch (Exception e) {
+            e.printStackTrace();
             return false;
         }
 
@@ -148,7 +184,7 @@ public class FileTransferSender {
         try {
             // Initialize Sockets
             // ServerSocket ssock = new ServerSocket(5000);
-            ServerSocket ssock = new ServerSocket(filePort, 2);
+            ServerSocket ssock = new ServerSocket(filePort, 8);
             Socket socket = ssock.accept();
 
             // Specify the file
@@ -192,6 +228,7 @@ public class FileTransferSender {
             System.out.println("File sent succesfully!");
             return true;
         } catch (Exception e) {
+            e.printStackTrace();
             return false;
         }
     }
