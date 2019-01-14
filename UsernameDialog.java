@@ -1,4 +1,9 @@
 import java.awt.Container;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.util.function.Consumer;
 
 import javax.swing.JButton;
@@ -7,10 +12,10 @@ import javax.swing.JLabel;
 import javax.swing.JTextField;
 import javax.swing.SpringLayout;
 
-public class UsernameDialog {
+public class UsernameDialog implements Serializable{
     private String selectedUsername;
     private boolean hasSelectedUsername = false;
-    private Consumer<UsernameDialog> onComplete;
+    private String savename = "usernameDialog.sav";
 
     public UsernameDialog(){
         this(null);
@@ -21,13 +26,15 @@ public class UsernameDialog {
      * @param onComplete - consumer where input is this username dialog
      */
     public UsernameDialog(Consumer<UsernameDialog> onComplete){
+        this.load(this.savename);
         if (!this.hasSelectedUsername){
-            this.show();
+            this.show(onComplete);
+        } else { // call onComplete as if filled in automatically
+            onComplete.accept(this);
         }
-        this.onComplete = onComplete;
     }
 
-    public void show() {
+    public void show(Consumer<UsernameDialog> onComplete){
         JDialog dialog = new JDialog();
         dialog.setTitle("Select A Username");
         dialog.setSize(300, 200);
@@ -43,18 +50,20 @@ public class UsernameDialog {
         okButton.addActionListener((a)->{
             this.selectedUsername = usernameInput.getText() != null ? usernameInput.getText() : "";
             this.hasSelectedUsername = true;
-            if (this.onComplete!= null){
-                this.onComplete.accept(this);
+            if (onComplete!= null){
+                onComplete.accept(this);
             }
+            this.save();
             dialog.dispose();
         });
 
         cancelButton.addActionListener((a)->{
             this.selectedUsername = "Unknown User";
             this.hasSelectedUsername = true;
-            if (this.onComplete!= null){
-                this.onComplete.accept(this);
+            if (onComplete!= null){
+                onComplete.accept(this);
             }
+            this.save();
             dialog.dispose();
         });
 
@@ -81,6 +90,10 @@ public class UsernameDialog {
         usernameInput.setText("User_" + Math.round((float) (200 * Math.random())));
     }
 
+    public void show() {
+        this.show(null);
+    }
+
     /**
      * Return the username selected by the user
      * @return
@@ -98,10 +111,44 @@ public class UsernameDialog {
     }
 
     /**
-     * Save this class
+     * Attempt to save this object
      */
     public void save(){
-        
+        try {
+            ObjectOutputStream objectOutputStream;
+            objectOutputStream = new ObjectOutputStream(new FileOutputStream(this.savename));
+			objectOutputStream.writeObject(this);
+            objectOutputStream.close();
+		} catch (Exception ex) {
+			ex.printStackTrace();
+        }
     }
+
+    public void clone(UsernameDialog otherDialog){
+        this.selectedUsername = otherDialog.getUsername();
+        this.hasSelectedUsername = otherDialog.hasChosenUsername();
+    }
+
+    /**
+     * Attempt to load this object from a save file
+     * @param fileName
+     */
+    public void load(String fileName){
+        try{
+            UsernameDialog loadedDialog;
+            ObjectInputStream objectInputStream;
+			objectInputStream = new ObjectInputStream(new FileInputStream(fileName)) ;
+            loadedDialog = (UsernameDialog) objectInputStream.readObject();
+
+            objectInputStream.close();
+
+            this.clone(loadedDialog);
+
+		} catch (Exception ex) {
+            System.out.println("Couldn't be loaded");
+			// ex.printStackTrace();
+        }
+        
+    }    
 
 }
