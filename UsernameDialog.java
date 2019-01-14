@@ -41,7 +41,7 @@ public class UsernameDialog implements Serializable{
 
     public void show(Consumer<UsernameDialog> onComplete){
         JDialog dialog = new JDialog();
-        dialog.setTitle(String.valueOf(this.saveLocation));
+        dialog.setTitle("Select A Username");
         dialog.setSize(300, 200);
         // dialog.setResizable(false);
 

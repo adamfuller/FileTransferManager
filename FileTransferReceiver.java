@@ -250,7 +250,8 @@ public class FileTransferReceiver {
             socket.connect(targetAddress, 500);
             byte[] contents = new byte[10000];
 
-            FileOutputStream fos = new FileOutputStream(filename);
+            String home = System.getProperty("user.home");
+            FileOutputStream fos = new FileOutputStream(home + "/Downloads/"+filename);
             BufferedOutputStream bos = new BufferedOutputStream(fos);
             InputStream is = socket.getInputStream();
     
