@@ -1,2 +1,2 @@
-Main-Class: FileTransfer
+Main-Class: FileTransferManager
 

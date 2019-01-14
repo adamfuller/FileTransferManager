@@ -13,7 +13,7 @@ import javax.swing.JTextField;
 import javax.swing.SpringLayout;
 
 public class UsernameDialog implements Serializable{
-    private String selectedUsername;
+    private String selectedUsername, saveLocation;
     private boolean hasSelectedUsername = false;
     private String savename = "usernameDialog.sav";
 
@@ -26,19 +26,24 @@ public class UsernameDialog implements Serializable{
      * @param onComplete - consumer where input is this username dialog
      */
     public UsernameDialog(Consumer<UsernameDialog> onComplete){
-        this.load(this.savename);
+        try{
+            this.saveLocation = this.getClass().getProtectionDomain().getCodeSource().getLocation().toURI().getPath();
+            this.saveLocation = this.saveLocation.substring(0, this.saveLocation.lastIndexOf("/")+1);
+        } catch (Exception e){}
+        this.load(this.saveLocation!=null?this.saveLocation+this.savename:this.savename);
         if (!this.hasSelectedUsername){
             this.show(onComplete);
         } else { // call onComplete as if filled in automatically
             onComplete.accept(this);
         }
+        
     }
 
     public void show(Consumer<UsernameDialog> onComplete){
         JDialog dialog = new JDialog();
-        dialog.setTitle("Select A Username");
+        dialog.setTitle(String.valueOf(this.saveLocation));
         dialog.setSize(300, 200);
-        dialog.setResizable(false);
+        // dialog.setResizable(false);
 
         SpringLayout layout = new SpringLayout();
 
@@ -116,7 +121,7 @@ public class UsernameDialog implements Serializable{
     public void save(){
         try {
             ObjectOutputStream objectOutputStream;
-            objectOutputStream = new ObjectOutputStream(new FileOutputStream(this.savename));
+            objectOutputStream = new ObjectOutputStream(new FileOutputStream(this.saveLocation!=null? (this.saveLocation+this.savename):this.savename ));
 			objectOutputStream.writeObject(this);
             objectOutputStream.close();
 		} catch (Exception ex) {
