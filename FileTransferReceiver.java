@@ -10,19 +10,26 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Scanner;
 import java.util.function.Consumer;
 
 import javax.swing.JButton;
 import javax.swing.JFrame;
+import javax.swing.JLabel;
 import javax.swing.Timer;
 
 public class FileTransferReceiver {
+    private FileTransferManager manager;
     private String targetIP = "localhost";
-    private String ipRange, selfIP, senderUsername, username;
+    private String senderUsername, username;
     private boolean usingAsync = false;
-    private boolean isLookingForSender = false;
+    private ServerSocket initServerSocket;
+    private ServerSocket stringServerSocket;
+    private ServerSocket fileServerSocket;
+    private boolean hasAccepted = false;
+    private boolean hasRejected = false;
 
     // Should be identical between sender/receiver
     private int initPort = 4999;
@@ -37,127 +44,31 @@ public class FileTransferReceiver {
     File: 5000
     */
 
-    public FileTransferReceiver(boolean shouldFindSender){
-        try{
-            this.selfIP = InetAddress.getLocalHost().getHostAddress();
-            this.ipRange = this.selfIP.substring(0, this.selfIP.lastIndexOf(".")+1);
-    
-            if (shouldFindSender){
-                if (!this.findSender()){
-                    System.out.println("No Sender Found");
-                } else{
-                    System.out.println("Sender found at " + targetIP);
-                }
-            } else {
-                // don't search for sender yet (same as without params)
-            }
-        } catch (Exception e){
-            this.selfIP = "localhost";
-        }
-    }
-
     public FileTransferReceiver(){
-        this(false);
+        try{
+            this.initServerSocket = new ServerSocket(this.initPort, 8);
+            this.stringServerSocket = new ServerSocket(this.stringPort, 8);
+            this.fileServerSocket = new ServerSocket(this.filePort, 8);
+        } catch (Exception e){
+            e.printStackTrace();
+        }
     }
 
-    /**
-     * Always false if async 
-     * @return true if sender is found false if not found or using async findSender
-     */
-    public boolean findSender(){
-        return this.findSender(this.usingAsync);
-    }
-
-    /**
-     * Finds the ip of the sender and stores it
-     * @return true if a sender is found false if no sender found
-     */
-    private boolean findSender(final boolean isAsync){
-        if (isAsync){ // use another thread to find the sender
-            new GeneralThread((n)->{
-                System.out.println("Starting new Thread");
-                this.isLookingForSender = true;
-                this.findSender(false);
-                this.isLookingForSender = false;
-            }, null);
-            return false;
-        }
-        boolean senderFound = false;
-        for (int i = 0; i<256; i++){
-            this.targetIP = this.ipRange+i;
-            Socket socket = new Socket();
-            try {
-                socket.connect(new InetSocketAddress(InetAddress.getByName(this.targetIP), this.initPort), 100);
-
-                // System.out.println("Receiver: " + this.targetIP);
-                InputStream iS = socket.getInputStream();
-                Scanner scanner = new Scanner(iS);
-                Scanner delimitedScanner = scanner.useDelimiter("\\A");
-
-                StringBuilder stringBuilder = new StringBuilder();
-
-                while (delimitedScanner.hasNext()){
-                    stringBuilder.append(delimitedScanner.next());
-                }
-
-                socket.close();
-                delimitedScanner.close();
-                scanner.close();
-                iS.close();
-
-                String initHandshake[] = stringBuilder.toString().split(this.delimiter); // split handshake by delimiter
-
-                if (initHandshake != null && initHandshake[0].contains(this.hostCode)){
-                    senderFound = true;
-                    this.senderUsername = initHandshake.length >=2 ? initHandshake[1] : "Unknown User";
-                    break;
-                } else {
-                    System.out.println("Handshake of length " + initHandshake.length);
-                    System.out.println("Failed handshake with ");
-                    for (String s: initHandshake){
-                        System.out.print(s);
-                    }
-                }
-
-            }catch(Exception e){
-                // System.out.println("Exception thrown");
-                try{
-                    if (!socket.isClosed()){
-                        socket.close();
-                    }
-                } catch (Exception e2){
-                }
-                
-                continue;
-            }
-        }
-        if (!senderFound){
-            this.targetIP = "localhost";
-        }
-        return senderFound;
+    public void setManager(FileTransferManager manager){
+        this.manager = manager;
     }
 
     //#region receiving region
 
-    /**
-     * Gets string over port 5001
-     * @return received string or null if failed or asynchronous
-     */
-    public String receiveString(){
-        return this.receiveString(this.usingAsync);
-    }
-
-    
-    private String receiveString(final boolean isAsync){
+    private String receiveString(Socket stringSocket, final boolean isAsync){
         if (isAsync){ // use another thread to receive the string
             new GeneralThread((n)->{
-                this.receiveString(false);
+                this.receiveString(stringSocket, false);
             }, null);
             return null;
         }
         try{
-            Socket stringSocket = new Socket();
-            stringSocket.connect(new InetSocketAddress(InetAddress.getByName(this.targetIP), this.stringPort), 1000);
+
             InputStream stringInputStream = stringSocket.getInputStream();
             Scanner scanner = new Scanner(stringInputStream);
             Scanner delimitedScanner = scanner.useDelimiter("\\A");
@@ -167,24 +78,14 @@ public class FileTransferReceiver {
             while (delimitedScanner.hasNext()){
                 stringBuilder.append(delimitedScanner.next());
             }
-            stringSocket.close();
             delimitedScanner.close();
             scanner.close();
             stringInputStream.close();
             return stringBuilder.toString();
+
         } catch (Exception e){
             return null;
         }   
-    }
-
-
-    /**
-     * Downloads file over port 5000 and saves it
-     * @param filename - filename to download as
-     * @return true if file successfully downloaded false if failed or asynchronous
-     */
-    public boolean receiveFile(String filename){
-        return this.receiveFile(filename, this.usingAsync);
     }
     
     /**
@@ -193,19 +94,16 @@ public class FileTransferReceiver {
      * @param isAsync - should the file be downloaded in the background
      * @return
      */
-    private boolean receiveFile(final String filename, boolean isAsync){
+    private boolean receiveFile(final String filename, Socket socket, boolean isAsync){
         if (isAsync){ // use another thread to find the sender
             new GeneralThread((n)->{
-                this.receiveFile(filename, false);
+                this.receiveFile(filename, socket, false);
             }, null);
             return false;
         }
         try{
-            Socket socket = new Socket();
-            InetSocketAddress targetAddress = new InetSocketAddress(InetAddress.getByName(this.targetIP), this.filePort);
-            socket.connect(targetAddress, 500);
+            
             byte[] contents = new byte[10000];
-
             String home = System.getProperty("user.home");
             FileOutputStream fos = new FileOutputStream(home + "/Downloads/"+filename);
             BufferedOutputStream bos = new BufferedOutputStream(fos);
@@ -229,7 +127,80 @@ public class FileTransferReceiver {
         }   
     }
 
+    public boolean receiveHandshake(Socket initSocket){
+        this.targetIP = initSocket.getInetAddress().getHostAddress();
+        String initString = this.receiveString(initSocket, false);
+        String initHandshake[] = initString.split(this.delimiter); // split handshake by delimiter
+
+        if (initHandshake != null && initHandshake[0].contains(this.hostCode)){
+            this.senderUsername = initHandshake.length >=2 ? initHandshake[1] : "Unknown User";
+        } else {
+            System.out.println("Failed handshake with ");
+            for (String s: initHandshake){
+                System.out.print(s);
+            }
+        }
+
+        if (this.manager!=null){
+            this.manager.promptToAccept();
+        }
+
+        while (!this.hasAccepted || !this.hasRejected){
+            try{Thread.sleep(10);}catch (Exception e){}
+        }
+        if (this.hasRejected){
+            return false;
+        }
+        this.hasAccepted = false;
+        this.hasRejected = false;
+        return true;
+    }
+
     //#endregion receiving region
+
+    public void startListening(){
+        new GeneralThread((NULL)->{
+            while(true){
+                try{
+                    // handshake phase
+                    Socket initSocket = this.initServerSocket.accept();
+                    if (!this.receiveHandshake(initSocket)){
+                        continue; // if handshake fails or file rejected restart
+                    }
+
+                    // filename getting phase
+                    Socket stringSocket = this.stringServerSocket.accept();
+                    String filename = this.receiveString(stringSocket, false);
+                    stringSocket.close();
+
+                    if (filename == null){
+                        continue;
+                    }
+
+                    // File getting phase
+                    Socket fileSocket = this.fileServerSocket.accept();
+                    if (this.manager != null){
+                        this.manager.receivingFile();
+                    }
+
+                    if (this.receiveFile(filename, fileSocket, false)){
+                        if (this.manager != null){
+                            this.manager.fileReceived();
+                        }
+                    } else {
+                        if (this.manager != null){
+                            this.manager.fileFailedToDownload();
+                        }
+                    }
+                    fileSocket.close();
+                    
+                } catch (Exception e){
+                    e.printStackTrace();
+                    break;
+                }
+            }
+        }, null);
+    }
 
     /**
      * Reject the incoming file
@@ -242,10 +213,10 @@ public class FileTransferReceiver {
             // Get socket's output stream
             OutputStream socketOutputStream = stringSocket.getOutputStream();
             socketOutputStream.write("NO".getBytes());
-
             socketOutputStream.flush();
             socketOutputStream.close();
             stringSocket.close();
+            this.hasRejected = true;
             return true;
         } catch (Exception e){
             e.printStackTrace();
@@ -259,6 +230,7 @@ public class FileTransferReceiver {
      * @return
      */
     public boolean acceptFile(){
+        this.hasAccepted = true;
         try{
             Socket stringSocket = new Socket();
             InetSocketAddress targetAddress = new InetSocketAddress(InetAddress.getByName(this.targetIP), this.stringPort);
@@ -278,14 +250,6 @@ public class FileTransferReceiver {
     }
 
     /**
-     * Returns if the receiver has found a sender
-     * @return true if target is not self
-     */
-    public boolean hasFoundSender(){
-        return !this.targetIP.equals("localhost");
-    }
-
-    /**
      * Get the String representation of the Sender's IP address
      * @return IP address of the connected sender
      */
@@ -299,14 +263,6 @@ public class FileTransferReceiver {
      */
     public String getSenderUsername(){
         return this.senderUsername;
-    }
-
-    /**
-     * 
-     * @return
-     */
-    public boolean isLookingForSender(){
-        return this.isLookingForSender;
     }
 
     /**
@@ -370,66 +326,5 @@ public class FileTransferReceiver {
         public void stop() { this.thread.interrupt(); }
     
     }
-
-    public static void main(String[] args) throws Exception {
-
-        /* Command line version
-        String filename = FileTransferReceiver.receiveString();
-        FileTransferReceiver.receiveFile(filename);
-
-        System.out.println("File saved successfully!");
-        */
-
-        JFrame frame = new JFrame("File Receiver");
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setSize(300, 200);
-        
-        JButton b = new JButton("Receive File");
-        final FileTransferReceiver fileTransferReceiver = new FileTransferReceiver();
-        
-
-        ActionListener al = new ActionListener(){
-            
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                JButton button = (JButton) (e.getSource());
-                
-                try {
-                    // FileTransferReceiver.changeButtonText(button, "Clicked");
-                    button.setText("Clicked");
-                    new Thread(new Runnable(){
-                        @Override
-                        public void run(){
-                            FileTransferReceiver ftr = new FileTransferReceiver(true);
-                            String filename = ftr.receiveString();
-                            ftr.receiveFile(filename);
-                        }
-                    }).start();
-                    System.out.println("Clicked");
-                    
-                    // if (!ftr.foundSender()){
-                    //     button.setText("No Sender Available");
-                    //     return;
-                    // } else {
-                    //     button.setText("Downloading file...");
-                    // }
-                    
-                    button.setText("File Received");
-                    Timer t = new Timer(2000, (n)->{
-                        button.setText("Receive File");
-                    });
-                    t.setRepeats(false);
-                    t.start();
-                } catch (Exception ex) {
-                    System.out.println("Failed to get file");
-                }
-                // button.setText("Receive File");
-            }
-        };
-
-        b.addActionListener(al);
-        frame.add(b);
-        // frame.pack(); // sets to smaller size
-        frame.setVisible(true);
-    }
+    
 }

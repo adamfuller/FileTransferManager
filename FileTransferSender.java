@@ -23,11 +23,9 @@ import javax.swing.JFrame;
 
 public class FileTransferSender {
     private boolean isAsync = false;
-    private String selfIP, ipRange;
     private String username = "USER_" + Math.round((float) (200.0 * Math.random()) );
     private String targetIP = "localhost";
-    private static int defaultConnections = 2;
-    private int numConnections;
+    private static int defaultConnections = 8;
     public File chosenFile;
     public String chosenFilePath, chosenFilename;
     private int percentProgress = 0;
@@ -43,58 +41,45 @@ public class FileTransferSender {
      * Create FileTransferSender with default number of available connections
      */
     public FileTransferSender(){
-        this(FileTransferSender.defaultConnections);
+
     }
 
     /**
-     * Create FileTransferSender with numConnections of available connections
-     * @param numConnections - number of available connections
+     * Set the ip to send files to
+     * @param ip - ip to send to
      */
-    public FileTransferSender(int numConnections){
-        this.numConnections = numConnections;
-        new GeneralThread((n)->{
-            try {
-                // System.out.println("About to get own ip");
-                
-                    this.selfIP = InetAddress.getLocalHost().getHostAddress();
-                    this.ipRange = this.selfIP.substring(0, this.selfIP.lastIndexOf(".")+1);
+    public void setTarget(String ip){
+        this.targetIP = ip;
+    }
 
-                // System.out.println("Got own ip");
-            } catch (Exception e){
-                this.selfIP = "localhost";
-            }
-        }, null);
-        if (numConnections == 0){
-            return;
+    /**
+     * Start handshake with receiver specified using setTarget({@code String}) function
+     * @return true if successful, false if async
+     */
+    public boolean startHandshake(){
+        if (this.targetIP != null){
+            return this.startHandshake(this.targetIP, this.isAsync);
+        } else {
+            return false;
         }
-        this.listen();
-    }
-
-    //#region listen methods
-    public boolean listen(int numConnections){
-        this.numConnections = numConnections;
-        return this.listen();
-    }
-
-    public boolean listen(){
-        return this.listen(this.isAsync);
     }
 
     /**
-     * Wait for a connection to be made
-     * @return true if connection is made false if exception is thrown
+     * Start handshake with receiver on specified ip address
+     * @param ip - receiver's ip address
+     * @return true if successful, false if async
      */
-    public boolean listen(boolean isAsync){
+    public boolean startHandshake(String ip, boolean isAsync){
         if (isAsync){ // use another thread to listen
             new GeneralThread((n)->{
-                this.listen(false);
+                this.startHandshake(ip, false);
             }, null);
             return false;
         }
         try{
-            ServerSocket waitServerSocket = new ServerSocket(initPort, this.numConnections); // wait for socket connection on port 4999
-            System.out.println("Waiting for connection...");
-            Socket socket = waitServerSocket.accept();
+            Socket socket = new Socket();
+            socket.connect(new InetSocketAddress(InetAddress.getByName(this.targetIP), this.initPort), 200);
+
             System.out.println("Connection made.");
             this.targetIP = socket.getInetAddress().getHostAddress();
             // System.out.println("Sender: " + this.targetIP);
@@ -110,15 +95,12 @@ public class FileTransferSender {
             os.flush();
             os.close();
             socket.close();
-            waitServerSocket.close();
             return true;
         }catch (Exception e){
             e.printStackTrace();
             return false;
         }
     }
-
-    //#endregion
 
     public String receiveString(){
         try{
@@ -146,6 +128,11 @@ public class FileTransferSender {
         }
     }
 
+    public boolean sendString(String string){
+        if (this.targetIP == null) return false;
+        return this.sendString(string, this.targetIP);
+    }
+
 
     /**
      * Send a string over port 5001
@@ -153,14 +140,11 @@ public class FileTransferSender {
      * @param string
      * @return
      */
-    public boolean sendString(String string) {
+    public boolean sendString(String string, String ip) {
         try {
             // Initialize Sockets
-            // ServerSocket ssock = new ServerSocket(5001);
-            ServerSocket ssock = new ServerSocket(this.stringPort, 8);
-            // new ServerSocket(port, backlog, bindAddr)
-            System.out.println("before accept");
-            Socket socket = ssock.accept();
+            Socket socket = new Socket();
+            socket.connect(new InetSocketAddress(InetAddress.getByName(this.targetIP), this.stringPort), 200);
             System.out.println("Accepted");
 
             // Get socket's output stream
@@ -172,7 +156,6 @@ public class FileTransferSender {
             socketOutputStream.close();
             // File transfer done. Close the socket connection!
             socket.close();
-            ssock.close();
             System.out.println("String sent");
             return true;
         } catch (Exception e) {
@@ -183,17 +166,27 @@ public class FileTransferSender {
     }
 
     /**
-     * Send file over port 5000
+     * Send file over port 5000 to ip specified by setTarget({@code String}) function
+     * @param filename
+     * @return
+     */
+    public boolean sendFile(String filename){
+        if (this.targetIP == null) return false;
+        return this.sendFile(filename, this.targetIP);
+    }
+
+    /**
+     * Send file over port 5000 to specified ip
      * 
      * @param filename
      * @return
      */
-    public boolean sendFile(String filename) {
+    public boolean sendFile(String filename, String ip) {
         try {
             // Initialize Sockets
             // ServerSocket ssock = new ServerSocket(5000);
-            ServerSocket ssock = new ServerSocket(filePort, 8);
-            Socket socket = ssock.accept();
+            Socket socket = new Socket();
+            socket.connect(new InetSocketAddress(InetAddress.getByName(ip), this.filePort), 200);
 
             // Specify the file
             File file = new File(filename);
@@ -232,7 +225,6 @@ public class FileTransferSender {
             bis.close();
             // File transfer done. Close the socket connection!
             socket.close();
-            ssock.close();
             System.out.println("File sent succesfully!");
             return true;
         } catch (Exception e) {
@@ -340,50 +332,5 @@ public class FileTransferSender {
         public void stop() { this.thread.interrupt(); }
     
     }
-    public static void main(String[] args) throws Exception {
-        if (args.length >= 1) {
-            String filePath = args[0];
-            String filename = new File(filePath).getName();
-            FileTransferSender fts = new FileTransferSender();
-            fts.sendString(filename);
-            fts.sendFile(filePath);
-
-        } else {
-            
-            JFrame frame = new JFrame("File Sender");
-            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            frame.setSize(300, 200);
-            
-            JButton b = new JButton("Pick File to Send");
-            frame.add(b);
-            frame.setVisible(true);
-            
-
-            b.addActionListener((a) -> {
-                try {
-                    b.setText("Waiting for Client...");
-                    
-                    // JFileChooser fc = new JFileChooser();
-                    // // fc.setVisible(true);
-                    // fc.showOpenDialog(b);
-                    System.out.println("Button Clicked");
-                    FileTransferSender fts = new FileTransferSender(0);
-                    System.out.println("Sender made");
-                    File f = fts.pickFile();
-                    fts.listen(2);
-                    
-                    fts.sendString(fts.chosenFilename);
-                    System.out.println("About to rename button");
-                    b.setText("Sending file...");
-                    fts.sendFile(fts.chosenFilePath);
-                    b.setText("Pick another File");
-
-                } catch (Exception e) {
-
-                }
-            });
-
-        }
-
-    }
+    
 }
