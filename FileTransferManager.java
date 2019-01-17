@@ -68,6 +68,13 @@ public class FileTransferManager {
     // #region FileTransferServerClient methods
 
     /**
+     * Set the user to active
+     * @return true if successful
+     */
+    public boolean setActive(){
+        return this.fileTransferServerClient.setActive(this.getUsername());
+    }
+    /**
      * Updates the user if found, if not inserts the user
      * </p>
      * If the table the user is going to be on does not exist the table is created
@@ -97,6 +104,7 @@ public class FileTransferManager {
             });
             return false;
         }
+        boolean didSucceed = false;
         Map<String, String> parameters = new HashMap<>();
         parameters.put("ex_ip", this.fileTransferServerClient.getPublicIP());
         parameters.put("ip", this.fileTransferServerClient.getPrivateIP());
@@ -108,18 +116,18 @@ public class FileTransferManager {
             // System.out.println("User doesn't already exist");
             if (fileTransferServerClient.update(parameters)) {
                 // System.out.println("update succeeded");
-                return true;
+                didSucceed = true;
             } else {
                 if (fileTransferServerClient.insert(parameters)) {
                     // System.out.println("insert succeeded");
-                    return true;
+                    didSucceed = true;
                 } else {
                     if (fileTransferServerClient.create(
                             parameters.get("table") != null ? parameters.get("table") : parameters.get("ex_ip"))) {
                         // System.out.println("create succeeded");
                         if (fileTransferServerClient.insert(parameters)) {
                             // System.out.println("second insert succeeded");
-                            return true;
+                            didSucceed = true;
                         }
                     }
                 }
@@ -129,12 +137,13 @@ public class FileTransferManager {
             parameters.put("mask", String.valueOf(results.get(0).mask)); // copy mask over from first
             if (fileTransferServerClient.update(parameters)) {
                 // System.out.println("update succeeded");
-                return true;
+                didSucceed = true;
             } else {
             } // update failed for some reason
             // System.out.println("Array was not empty");
         }
-        return false;
+        this.setActive(); // set self as active
+        return didSucceed;
     }
 
     public void promptToAccept(){
@@ -185,7 +194,7 @@ public class FileTransferManager {
      */
     public Map<String, String> getLocalClients() {
         Map<String, String> clients = new HashMap<>();
-        ArrayList<QueryResult> results = this.fileTransferServerClient.pull();
+        ArrayList<QueryResult> results = this.fileTransferServerClient.getActive();
         results.forEach((result) -> {
             clients.put(result.username, result.ip);
 
@@ -303,10 +312,13 @@ public class FileTransferManager {
         JButton noButton = new JButton("No");
         ControlledWindowJFrame frame = new ControlledWindowJFrame("File Transfer Manager");
         SpringLayout layout = new SpringLayout();
+        clientsBox.addItem("Loading...");
 
         fileTransferManager.newThread((NULL)->{
+            System.out.println("Started new thread");
+            Map<String, String> locals = fileTransferManager.getLocalClients();
             clients.clear();
-            fileTransferManager.getLocalClients().forEach((key, value)->{
+            locals.forEach((key, value)->{
                 clients.put(key, value);
             });
             clientsBox.removeAllItems();
@@ -321,8 +333,9 @@ public class FileTransferManager {
         });
 
         final Timer clientUpdateTimer = new Timer(30000, (n)->{
+            Map<String, String> locals = fileTransferManager.getLocalClients();
             clients.clear();
-            fileTransferManager.getLocalClients().forEach((key, value)->{
+            locals.forEach((key, value)->{
                 clients.put(key, value);
             });
             clientsBox.removeAllItems();
@@ -339,6 +352,7 @@ public class FileTransferManager {
             UsernameDialog dialog = (UsernameDialog) self;
             fileTransferManager.setUsername(dialog.getUsername());
             fileTransferManager.setupServerConnection(true); // upload to server
+            
             if (!serverUpdateTimer.isRunning()) {
                 serverUpdateTimer.start();
             }
@@ -353,6 +367,11 @@ public class FileTransferManager {
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setSize(323, 200);
         frame.setResizable(false);
+
+        frame.setOnClose((NULL)->{
+            FileTransferServerClient ftsc = new FileTransferServerClient();
+            ftsc.setInactive(fileTransferManager.getUsername());
+        });
 
         // promptLabel.setHorizontalAlignment(SwingConstants.CENTER);
 

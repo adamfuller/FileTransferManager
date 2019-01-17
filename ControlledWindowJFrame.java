@@ -30,13 +30,15 @@ public class ControlledWindowJFrame extends JFrame implements WindowListener, Wi
     }
 
     public void windowClosing(WindowEvent e) {
-        
-    }
-
-    public void windowClosed(WindowEvent e) {
+        JFrame f = (JFrame) e.getSource();
+        f.setVisible(false);
         if (this.onClose!=null){
             this.onClose.accept(null);
         }
+    }
+
+    public void windowClosed(WindowEvent e) {
+        
     }
 
     public void windowOpened(WindowEvent e) {

@@ -7,14 +7,10 @@
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.InputStreamReader;
-import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.InetAddress;
 import java.net.URL;
 import java.net.URLEncoder;
-import java.time.Duration;
-import java.time.Instant;
-import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -44,6 +40,40 @@ public class FileTransferServerClient {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    /**
+     * Get an array list of results for currently active local users
+     * @return array list of {@code QueryResult} objects
+     */
+    public ArrayList<QueryResult> getActive(){
+        Map<String, String> params = new HashMap<>();
+        params.put("ex_ip", this.getPublicIP());
+        String res = this.getRequest(this.serverAddress + "getActive.php", params);
+        return this.parsePullResults(res);
+    }
+
+    public boolean setActive(String username){
+        Map<String, String> params = new HashMap<>();
+        params.put("username", username);
+        params.put("ip", this.getPrivateIP());
+        params.put("ex_ip", this.getPublicIP());
+        params.put("active", this.getActiveString());
+
+        String res = this.getRequest(this.serverAddress + "setActive.php", params);
+        // System.out.println(res);
+        return res.contains("success");
+    }
+
+    public boolean setInactive(String username){
+        Map<String, String> params = new HashMap<>();
+        params.put("username", username);
+        params.put("ip", this.getPrivateIP());
+        params.put("ex_ip", this.getPublicIP());
+        params.put("active", this.getActiveString());
+        String res = this.getRequest(this.serverAddress + "setInactive.php", params);
+        // System.out.println(res);
+        return res.contains("success");
     }
 
     /**
@@ -120,14 +150,7 @@ public class FileTransferServerClient {
             parameters.put("ip", "unknown");
         }
 
-        LocalTime localTime = LocalTime.now();
-        StringBuilder activeBuilder = new StringBuilder();
-        activeBuilder.append(localTime.getHour());
-        if (localTime.getMinute() < 10) {
-            activeBuilder.append("0");
-        }
-        activeBuilder.append(localTime.getMinute());
-        parameters.put("active", activeBuilder.toString());
+        parameters.put("active", this.getActiveString());
 
         String requestResults = this.getRequest(this.serverAddress + "insert.php", parameters);
         if (requestResults.contains("doesn't exist")){ // this table doesn't exist yet
@@ -163,14 +186,7 @@ public class FileTransferServerClient {
             parameters.put("mask", "0");
         }
         if (!parameters.containsKey("active")) {
-            LocalTime localTime = LocalTime.now();
-            StringBuilder activeBuilder = new StringBuilder();
-            activeBuilder.append(localTime.getHour());
-            if (localTime.getMinute() < 10) {
-                activeBuilder.append("0");
-            }
-            activeBuilder.append(localTime.getMinute());
-            parameters.put("active", activeBuilder.toString());
+            parameters.put("active", this.getActiveString());
         }
         String requestResults = this.getRequest(this.serverAddress + "insert.php", parameters);
         if (requestResults.contains("doesn't exist")){ // this table doesn't exist yet
@@ -203,14 +219,7 @@ public class FileTransferServerClient {
             }
         }
         if (!parameters.containsKey("active")){
-            LocalTime localTime = LocalTime.now();
-            StringBuilder activeBuilder = new StringBuilder();
-            activeBuilder.append(localTime.getHour());
-            if (localTime.getMinute() < 10) {
-                activeBuilder.append("0");
-            }
-            activeBuilder.append(localTime.getMinute());
-            parameters.put("active", activeBuilder.toString());
+            parameters.put("active", this.getActiveString());
         }
 
         String requestResults = this.getRequest(this.serverAddress + "update.php", parameters);
@@ -252,16 +261,7 @@ public class FileTransferServerClient {
         } catch (Exception e) {
             parameters.put("ip", "unknown");
         }
-
-        LocalTime localTime = LocalTime.now();
-        StringBuilder activeBuilder = new StringBuilder();
-        activeBuilder.append(localTime.getHour());
-        if (localTime.getMinute() < 10) {
-            activeBuilder.append("0");
-        }
-        activeBuilder.append(localTime.getMinute());
-
-        parameters.put("active", activeBuilder.toString());
+        parameters.put("active", this.getActiveString());
 
         String requestResults = this.getRequest(this.serverAddress + "update.php", parameters);
         if (requestResults.contains("doesn't exist")){ // this table doesn't exist yet
@@ -474,9 +474,25 @@ public class FileTransferServerClient {
         return results;
     }
 
+    private String getActiveString(){
+        LocalTime localTime = LocalTime.now();
+        StringBuilder activeBuilder = new StringBuilder();
+        activeBuilder.append(localTime.getHour());
+        if (localTime.getMinute() < 10) {
+            activeBuilder.append("0");
+        }
+        activeBuilder.append(localTime.getMinute());
+        return activeBuilder.toString();
+    }
+
     public static void main(String args[]) {
 
         FileTransferServerClient ftsc = new FileTransferServerClient();
+        if (ftsc.setActive("AdamFuller")){
+            System.out.println("Set active");
+        } else {
+            System.out.println("Failed");
+        }
         // ftsc.delete("sample_username");
         // try {
         // ftsc.pullString();
