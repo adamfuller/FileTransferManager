@@ -137,6 +137,8 @@ public class FileTransferReceiver {
         return senderFound;
     }
 
+    //#region receiving region
+
     /**
      * Gets string over port 5001
      * @return received string or null if failed or asynchronous
@@ -173,52 +175,6 @@ public class FileTransferReceiver {
         } catch (Exception e){
             return null;
         }   
-    }
-
-    /**
-     * Reject the incoming file
-     * @return
-     */
-    public boolean rejectFile(){
-        try{
-            Socket stringSocket = new Socket();
-            stringSocket.connect(new InetSocketAddress(InetAddress.getByName(this.targetIP), this.stringPort), 500);
-            // Get socket's output stream
-            OutputStream socketOutputStream = stringSocket.getOutputStream();
-            socketOutputStream.write("NO".getBytes());
-
-            socketOutputStream.flush();
-            socketOutputStream.close();
-            stringSocket.close();
-            return true;
-        } catch (Exception e){
-            e.printStackTrace();
-            return false;
-        }
-        
-    }
-
-    /**
-     * Reject the incoming file
-     * @return
-     */
-    public boolean acceptFile(){
-        try{
-            Socket stringSocket = new Socket();
-            InetSocketAddress targetAddress = new InetSocketAddress(InetAddress.getByName(this.targetIP), this.stringPort);
-            stringSocket.connect(targetAddress, 500);
-            // Get socket's output stream
-            OutputStream socketOutputStream = stringSocket.getOutputStream();
-            socketOutputStream.write("YES".getBytes());
-            socketOutputStream.flush();
-            socketOutputStream.close();
-            stringSocket.close();
-            return true;
-        } catch (Exception e){
-            e.printStackTrace();
-            return false;
-        }
-        
     }
 
 
@@ -266,6 +222,53 @@ public class FileTransferReceiver {
             socket.close();
             bos.close();
             is.close();
+            return true;
+        } catch (Exception e){
+            e.printStackTrace();
+            return false;
+        }   
+    }
+
+    //#endregion receiving region
+
+    /**
+     * Reject the incoming file
+     * @return
+     */
+    public boolean rejectFile(){
+        try{
+            Socket stringSocket = new Socket();
+            stringSocket.connect(new InetSocketAddress(InetAddress.getByName(this.targetIP), this.stringPort), 500);
+            // Get socket's output stream
+            OutputStream socketOutputStream = stringSocket.getOutputStream();
+            socketOutputStream.write("NO".getBytes());
+
+            socketOutputStream.flush();
+            socketOutputStream.close();
+            stringSocket.close();
+            return true;
+        } catch (Exception e){
+            e.printStackTrace();
+            return false;
+        }
+        
+    }
+
+    /**
+     * Reject the incoming file
+     * @return
+     */
+    public boolean acceptFile(){
+        try{
+            Socket stringSocket = new Socket();
+            InetSocketAddress targetAddress = new InetSocketAddress(InetAddress.getByName(this.targetIP), this.stringPort);
+            stringSocket.connect(targetAddress, 500);
+            // Get socket's output stream
+            OutputStream socketOutputStream = stringSocket.getOutputStream();
+            socketOutputStream.write("YES".getBytes());
+            socketOutputStream.flush();
+            socketOutputStream.close();
+            stringSocket.close();
             return true;
         } catch (Exception e){
             e.printStackTrace();

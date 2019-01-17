@@ -1,15 +1,23 @@
 import java.awt.Container;
+import java.awt.Window;
 import java.awt.event.ActionEvent;
+import java.util.ArrayList;
 import java.util.function.Consumer;
+import java.util.HashMap;
+import java.util.Map;
 
+import javax.swing.ComboBoxModel;
 import javax.swing.JButton;
+import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.SpringLayout;
+import javax.swing.Timer;
 
 public class FileTransferManager{
     private FileTransferReceiver fileTransferReceiver; // start receiver without searching
     private FileTransferSender fileTransferSender; // start sender with 0 listening connections
+    private FileTransferServerClient fileTransferServerClient;
     private boolean isSearchingForSender = false;
     private boolean isListeningForReceiver = false;
     private boolean receiverConnected = false;
@@ -20,6 +28,7 @@ public class FileTransferManager{
 
     public FileTransferManager(boolean listen, int numConnections, boolean isAsync){
         this.isAsync = isAsync;
+        this.fileTransferServerClient = new FileTransferServerClient();
         this.fileTransferReceiver = new FileTransferReceiver(listen);
         this.fileTransferReceiver.useAsync(isAsync);
         this.fileTransferSender = new FileTransferSender(numConnections);
@@ -58,6 +67,86 @@ public class FileTransferManager{
             onNo = null;
         }
     }
+
+    //#region FileTransferServerClient methods
+
+    /**
+     * Updates the user if found, if not inserts the user</p>
+     * If the table the user is going to be on does not exist the table is created
+     * and the user is added
+     * @return true if the user is update/added false if this fails or is asynchronous
+     */
+    public boolean setupServerConnection(){
+        return this.setupServerConnection(this.isAsync);
+    }
+    
+    /**
+     * Updates the user if found, if not inserts the user</p>
+     * If the table the user is going to be on does not exist the table is created
+     * and the user is added
+     * @param isAsync - {@true true} to run this function in another thread
+     * @return true if the user is update/added false if this fails or is asynchronous
+     */
+    public boolean setupServerConnection(boolean iSAsync){
+        if (isAsync){
+            this.newThread((n)->{
+                this.setupServerConnection(false);
+            });
+            return false;
+        }
+        Map<String, String> parameters = new HashMap<>();
+        parameters.put("ex_ip", this.fileTransferServerClient.getPublicIP());
+        parameters.put("ip", this.fileTransferServerClient.getPrivateIP());
+        parameters.put("username", this.getUsername());
+
+        // active and mask not necessary since it will be added by insert
+        ArrayList<QueryResult> results = this.fileTransferServerClient.pullByUsername(this.getUsername());
+        if (results.size() == 0) {
+            // System.out.println("User doesn't already exist");
+            if (fileTransferServerClient.update(parameters)){
+                // System.out.println("update succeeded");
+                return true;
+            } else {
+                if (fileTransferServerClient.insert(parameters)){
+                    // System.out.println("insert succeeded");
+                    return true;
+                } else {
+                    if (fileTransferServerClient.create( parameters.get("table")!=null ? parameters.get("table") : parameters.get("ex_ip") )){
+                        // System.out.println("create succeeded");
+                        if (fileTransferServerClient.insert(parameters)){
+                            // System.out.println("second insert succeeded");
+                            return true;
+                        }
+                    }
+                }
+            }
+        } else { // user exists so update it
+            // System.out.println("User already existed");
+            parameters.put("mask", String.valueOf(results.get(0).mask)); // copy mask over from first
+            if (fileTransferServerClient.update(parameters)){
+                // System.out.println("update succeeded");
+                return true;
+            } else {} // update failed for some reason
+            // System.out.println("Array was not empty");
+        }
+        return false;
+    }
+
+    /**
+     * Get a map of usernames and IPs
+     * @return Map with username keys and IP address values
+     */
+    public Map<String, String> getLocalClients(){
+        Map<String, String> clients = new HashMap<>();
+        ArrayList<QueryResult> results = this.fileTransferServerClient.pull();
+        results.forEach((result)->{
+            clients.put(result.username,result.ip);
+
+        });
+        return clients;
+    }
+
+    //#endregion FileTransferServerClient methods
 
     public void receiveFile(){
         this.receiveFile(null, null);
@@ -290,16 +379,32 @@ public class FileTransferManager{
     public static void main(String args[]){
         FileTransferManager fileTransferManager = new FileTransferManager(false, 0, false);
         JLabel prompt = new JLabel("Welcome to the File Transfer Manager");
+        JComboBox clientsBox = new JComboBox<>();
+        Map<String, String> clients = fileTransferManager.getLocalClients();
+
+        clients.keySet().forEach((key)->{
+            // System.out.println(key);
+            clientsBox.addItem(key);
+        });
+
+        final Timer serverUpdateTimer = new Timer(61000, (n)->{ // start timer to update server in background
+            // System.out.println("Timer called");
+            fileTransferManager.setupServerConnection();
+        });
 
         UsernameDialog usernameDialog = new UsernameDialog((self)->{
             UsernameDialog dialog = (UsernameDialog) self;
             fileTransferManager.setUsername(dialog.getUsername());
+            
+            fileTransferManager.setupServerConnection(); // upload to server
+            if (!serverUpdateTimer.isRunning()) { serverUpdateTimer.start(); }
+
             if (prompt != null){
                 prompt.setText("Welcome to the File Transfer Manager, " + dialog.getUsername());
             }
         });
 
-        JFrame frame = new JFrame("File Transfer Manager");
+        JFrame frame = new ControlledWindowJFrame("File Transfer Manager");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setSize(300, 200);
         frame.setResizable(false);
@@ -354,17 +459,17 @@ public class FileTransferManager{
         layout.putConstraint( SpringLayout.HORIZONTAL_CENTER, prompt, 0, SpringLayout.HORIZONTAL_CENTER, contentPane);
 
         // set the file receive button
-        layout.putConstraint(SpringLayout.NORTH, fileReceiveButton, 14, SpringLayout.SOUTH, prompt);
-        layout.putConstraint(SpringLayout.WEST, fileReceiveButton, 8, SpringLayout.WEST, contentPane);
+        layout.putConstraint(SpringLayout.NORTH, clientsBox, 14, SpringLayout.SOUTH, prompt);
+        layout.putConstraint(SpringLayout.WEST, clientsBox, 8, SpringLayout.WEST, contentPane);
 
         // set the file send button
         layout.putConstraint(SpringLayout.NORTH, fileSendButton, 14, SpringLayout.SOUTH, prompt);
         // layout.putConstraint(SpringLayout.EAST, fileSendButton, 8, SpringLayout.EAST, contentPane);
 
         // set the find sender button
-        layout.putConstraint(SpringLayout.NORTH, findSenderButton, 14, SpringLayout.SOUTH, fileReceiveButton);
+        layout.putConstraint(SpringLayout.NORTH, findSenderButton, 14, SpringLayout.SOUTH, clientsBox);
         // layout.putConstraint(SpringLayout.WEST, findSenderButton, 14, SpringLayout.WEST, contentPane);
-        layout.putConstraint(SpringLayout.HORIZONTAL_CENTER, findSenderButton, 0, SpringLayout.HORIZONTAL_CENTER, fileReceiveButton);
+        layout.putConstraint(SpringLayout.HORIZONTAL_CENTER, findSenderButton, 0, SpringLayout.HORIZONTAL_CENTER, clientsBox);
 
         // set the listenForReceiver button
         layout.putConstraint(SpringLayout.NORTH, listenForReceiverButton, 14, SpringLayout.SOUTH, fileSendButton);
@@ -381,7 +486,7 @@ public class FileTransferManager{
 
         frame.setLayout(layout);
 
-        frame.add(fileReceiveButton);
+        frame.add(clientsBox);
         frame.add(fileSendButton);
         frame.add(findSenderButton);
         frame.add(listenForReceiverButton);
@@ -398,4 +503,5 @@ public class FileTransferManager{
         }
         frame.setVisible(true);
     }
+
 }

@@ -12,6 +12,9 @@ import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.function.Consumer;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Scanner;
 
 import javax.swing.JButton;
@@ -23,17 +26,19 @@ public class FileTransferSender {
     private String selfIP, ipRange;
     private String username = "USER_" + Math.round((float) (200.0 * Math.random()) );
     private String targetIP = "localhost";
-    private String hostCode = "ADAM";
-    private String delimiter = "|";
-    private int initPort = 4999;
-    private int filePort = 5000;
-    private int stringPort = 5001;
     private static int defaultConnections = 2;
     private int numConnections;
     public File chosenFile;
     public String chosenFilePath, chosenFilename;
     private int percentProgress = 0;
-
+    
+    // Should be identical between sender and receiver
+    private String hostCode = "ADAM";
+    private String delimiter = "|";
+    private int initPort = 4999;
+    private int filePort = 5000;
+    private int stringPort = 5001;
+    
     /**
      * Create FileTransferSender with default number of available connections
      */
@@ -65,6 +70,7 @@ public class FileTransferSender {
         this.listen();
     }
 
+    //#region listen methods
     public boolean listen(int numConnections){
         this.numConnections = numConnections;
         return this.listen();
@@ -111,6 +117,8 @@ public class FileTransferSender {
             return false;
         }
     }
+
+    //#endregion
 
     public String receiveString(){
         try{

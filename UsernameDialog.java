@@ -150,7 +150,7 @@ public class UsernameDialog implements Serializable{
             this.clone(loadedDialog);
 
 		} catch (Exception ex) {
-            System.out.println("Couldn't be loaded");
+            // System.out.println("Couldn't be loaded");
 			// ex.printStackTrace();
         }
         
