@@ -15,11 +15,6 @@ import java.net.Socket;
 import java.util.Scanner;
 import java.util.function.Consumer;
 
-import javax.swing.JButton;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.Timer;
-
 public class FileTransferReceiver {
     private FileTransferManager manager;
     private String targetIP = "localhost";
@@ -45,13 +40,7 @@ public class FileTransferReceiver {
     */
 
     public FileTransferReceiver(){
-        try{
-            this.initServerSocket = new ServerSocket(this.initPort, 8);
-            this.stringServerSocket = new ServerSocket(this.stringPort, 8);
-            this.fileServerSocket = new ServerSocket(this.filePort, 8);
-        } catch (Exception e){
-            e.printStackTrace();
-        }
+        
     }
 
     public void setManager(FileTransferManager manager){
@@ -160,6 +149,16 @@ public class FileTransferReceiver {
 
     public void startListening(){
         new GeneralThread((NULL)->{
+            try{
+                if (this.initServerSocket == null)
+                    this.initServerSocket = new ServerSocket(this.initPort, 8);
+                if (this.stringServerSocket == null)
+                    this.stringServerSocket = new ServerSocket(this.stringPort, 8);
+                if (this.fileServerSocket == null)
+                    this.fileServerSocket = new ServerSocket(this.filePort, 8);
+            } catch (Exception e){
+                e.printStackTrace();
+            }
             while(true){
                 try{
                     // handshake phase

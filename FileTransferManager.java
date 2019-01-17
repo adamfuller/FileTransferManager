@@ -24,14 +24,11 @@ public class FileTransferManager {
     public FileTransferManager(boolean isAsync) {
         this.isAsync = isAsync;
         this.fileTransferServerClient = new FileTransferServerClient();
-
         this.fileTransferReceiver = new FileTransferReceiver();
         this.fileTransferReceiver.setManager(this);
         this.fileTransferReceiver.useAsync(isAsync);
-
         this.fileTransferSender = new FileTransferSender();
         this.fileTransferSender.setAsync(isAsync);
-
         this.fileTransferReceiver.startListening();// start listening for send requests
     }
 
@@ -93,7 +90,7 @@ public class FileTransferManager {
      * @return true if the user is update/added false if this fails or is
      *         asynchronous
      */
-    public boolean setupServerConnection(boolean iSAsync) {
+    public boolean setupServerConnection(boolean isAsync) {
         if (isAsync) {
             this.newThread((n) -> {
                 this.setupServerConnection(false);
@@ -300,50 +297,61 @@ public class FileTransferManager {
         FileTransferManager fileTransferManager = new FileTransferManager(false);
         JLabel prompt = new JLabel("Welcome to the File Transfer Manager");
         JComboBox<String> clientsBox = new JComboBox<>();
-        Map<String, String> clients = fileTransferManager.getLocalClients();
+        final Map<String, String> clients = new HashMap<>();
         JButton fileSendButton = new JButton("Send File");
         JButton yesButton = new JButton("Yes");
         JButton noButton = new JButton("No");
-        JFrame frame = new ControlledWindowJFrame("File Transfer Manager");
+        ControlledWindowJFrame frame = new ControlledWindowJFrame("File Transfer Manager");
         SpringLayout layout = new SpringLayout();
 
-        clients.keySet().forEach((key) -> {
-            // System.out.println(key);
-            clientsBox.addItem(key);
-        });
-
-        final Timer serverUpdateTimer = new Timer(61000, (n) -> { // start timer to update server in background
-            // System.out.println("Timer called");
-            fileTransferManager.setupServerConnection();
-        });
-
-        final Timer clientUpdateTimer = new Timer(30000, (n)->{
-            Map<String, String> newClients = fileTransferManager.getLocalClients();
+        fileTransferManager.newThread((NULL)->{
+            clients.clear();
+            fileTransferManager.getLocalClients().forEach((key, value)->{
+                clients.put(key, value);
+            });
             clientsBox.removeAllItems();
-            newClients.keySet().forEach((key) -> {
+            clients.keySet().forEach((key) -> {
                 clientsBox.addItem(key);
             });
         });
 
+        final Timer serverUpdateTimer = new Timer(61000, (n) -> { // start timer to update server in background
+            // System.out.println("Timer called");
+            fileTransferManager.setupServerConnection(true);
+        });
+
+        final Timer clientUpdateTimer = new Timer(30000, (n)->{
+            clients.clear();
+            fileTransferManager.getLocalClients().forEach((key, value)->{
+                clients.put(key, value);
+            });
+            clientsBox.removeAllItems();
+            clients.keySet().forEach((key) -> {
+                clientsBox.addItem(key);
+            });
+        });
+
+        // frame.setOnClose((n)->{
+
+        // });
+
         UsernameDialog usernameDialog = new UsernameDialog((self) -> {
             UsernameDialog dialog = (UsernameDialog) self;
             fileTransferManager.setUsername(dialog.getUsername());
-
-            fileTransferManager.setupServerConnection(); // upload to server
+            fileTransferManager.setupServerConnection(true); // upload to server
             if (!serverUpdateTimer.isRunning()) {
                 serverUpdateTimer.start();
             }
             if (!clientUpdateTimer.isRunning()){
                 clientUpdateTimer.start();
             }
-
             if (prompt != null) {
                 prompt.setText("Welcome to the File Transfer Manager, " + dialog.getUsername());
             }
         });
 
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setSize(300, 200);
+        frame.setSize(323, 200);
         frame.setResizable(false);
 
         // promptLabel.setHorizontalAlignment(SwingConstants.CENTER);
@@ -379,7 +387,7 @@ public class FileTransferManager {
 
         // set the file send button
         layout.putConstraint(SpringLayout.NORTH, fileSendButton, 14, SpringLayout.SOUTH, prompt);
-        layout.putConstraint(SpringLayout.EAST, fileSendButton, 8, SpringLayout.EAST, contentPane);
+        layout.putConstraint(SpringLayout.EAST, fileSendButton, -8, SpringLayout.EAST, contentPane);
 
         // set the yes button
         layout.putConstraint(SpringLayout.NORTH, yesButton, 14, SpringLayout.SOUTH, clientsBox);
