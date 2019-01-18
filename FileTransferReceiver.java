@@ -147,15 +147,28 @@ public class FileTransferReceiver {
 
     //#endregion receiving region
 
-    public void startListening(){
+    /**
+     * Start listening for a handshake the a filename then a file
+     */
+    public void startListening(){ // this will get a lot of exceptions thrown
         new GeneralThread((NULL)->{
             try{
-                if (this.initServerSocket == null)
+                if (this.initServerSocket == null){
                     this.initServerSocket = new ServerSocket(this.initPort, 8);
-                if (this.stringServerSocket == null)
+                } else {
+                    return;
+                }
+                if (this.stringServerSocket == null){
                     this.stringServerSocket = new ServerSocket(this.stringPort, 8);
-                if (this.fileServerSocket == null)
+                } else {
+                    return;
+                }
+                if (this.fileServerSocket == null) {
                     this.fileServerSocket = new ServerSocket(this.filePort, 8);
+                } else {
+                    return;
+                }
+
             } catch (Exception e){
                 e.printStackTrace();
             }
@@ -194,11 +207,28 @@ public class FileTransferReceiver {
                     fileSocket.close();
                     
                 } catch (Exception e){
-                    e.printStackTrace();
+                    // e.printStackTrace();
                     break;
                 }
             }
         }, null);
+    }
+
+    public boolean stopListening(){
+        try{
+            if (this.initServerSocket != null){
+                this.initServerSocket.close();
+            }
+            if (this.stringServerSocket != null){
+                this.stringServerSocket.close();
+            }
+            if (this.fileServerSocket != null){
+                this.fileServerSocket.close();
+            }
+            return true;
+        } catch (Exception e){
+            return false;
+        }
     }
 
     /**

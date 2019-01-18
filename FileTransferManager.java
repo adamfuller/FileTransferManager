@@ -1,5 +1,6 @@
 import java.awt.Container;
 import java.awt.event.ActionEvent;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.function.Consumer;
 import java.util.HashMap;
@@ -20,6 +21,7 @@ public class FileTransferManager {
     private Consumer<ActionEvent> onYes, onNo; // consumers for Yes and No buttons
     private JButton yesButton, noButton;
     private JLabel prompt;
+    public boolean isListening = false;
 
     public FileTransferManager(boolean isAsync) {
         this.isAsync = isAsync;
@@ -29,7 +31,7 @@ public class FileTransferManager {
         this.fileTransferReceiver.useAsync(isAsync);
         this.fileTransferSender = new FileTransferSender();
         this.fileTransferSender.setAsync(isAsync);
-        this.fileTransferReceiver.startListening();// start listening for send requests
+        this.listen();// start listening for send requests
     }
 
     public void setYesAndNoButtons(JButton yesButton, JButton noButton) {
@@ -188,6 +190,26 @@ public class FileTransferManager {
     }
 
     /**
+     * Start listening for incoming requests
+     */
+    public void listen(){
+        newThread((n)->{this.fileTransferServerClient.setActive(this.getUsername());});
+        this.isListening = true;
+        this.fileTransferReceiver.startListening();
+    }
+
+    /**
+     * Stop the receiver from listening
+     * @return true if stopped listening
+     */
+    public boolean stopListening(){
+        newThread((n)->{this.fileTransferServerClient.setInactive(this.getUsername());});
+        boolean res = this.fileTransferReceiver.stopListening();
+        this.isListening = !res;
+        return res;
+    }
+
+    /**
      * Get a map of usernames and IPs
      * 
      * @return Map with username keys and IP address values
@@ -207,7 +229,12 @@ public class FileTransferManager {
 
     public void sendFile(JLabel prompt, JButton button, String ip) {
         button.setEnabled(false);
-        fileTransferSender.pickFile();
+        File f = fileTransferSender.pickFile();
+        if (f == null){
+            button.setEnabled(true);
+            this.listen();
+            return;
+        }
 
         fileTransferSender.setTarget(ip); // set the senders target
 
@@ -231,6 +258,7 @@ public class FileTransferManager {
                 System.out.println("Sender Rejected");
             }
             button.setEnabled(true);
+            this.listen();
         });
     }
 
@@ -333,14 +361,16 @@ public class FileTransferManager {
         });
 
         final Timer clientUpdateTimer = new Timer(30000, (n)->{
-            Map<String, String> locals = fileTransferManager.getLocalClients();
-            clients.clear();
-            locals.forEach((key, value)->{
-                clients.put(key, value);
-            });
-            clientsBox.removeAllItems();
-            clients.keySet().forEach((key) -> {
-                clientsBox.addItem(key);
+            fileTransferManager.newThread((NULL)->{            
+                Map<String, String> locals = fileTransferManager.getLocalClients();
+                clients.clear();
+                locals.forEach((key, value)->{
+                    clients.put(key, value);
+                });
+                clientsBox.removeAllItems();
+                clients.keySet().forEach((key) -> {
+                    clientsBox.addItem(key);
+                });
             });
         });
 
@@ -378,6 +408,9 @@ public class FileTransferManager {
         fileTransferManager.setYesAndNoButtons(yesButton, noButton);
 
         fileSendButton.addActionListener((a) -> {
+            if (fileTransferManager.isListening){
+                fileTransferManager.stopListening();
+            }
             fileTransferManager.sendFile(prompt, (JButton) a.getSource(), clients.get(clientsBox.getSelectedItem()));
         });
 
