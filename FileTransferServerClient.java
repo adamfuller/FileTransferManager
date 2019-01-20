@@ -38,6 +38,7 @@ public class FileTransferServerClient {
         try {
             return InetAddress.getLocalHost().getHostAddress();
         } catch (Exception e) {
+            e.printStackTrace();
             return null;
         }
     }
@@ -53,27 +54,31 @@ public class FileTransferServerClient {
         return this.parsePullResults(res);
     }
 
+    /**
+     * Quickly set self to active on SQL don't wait for response
+     * @param username - username to set active
+     * @return true if successful
+     */
     public boolean setActive(String username){
         Map<String, String> params = new HashMap<>();
         params.put("username", username);
         params.put("ip", this.getPrivateIP());
         params.put("ex_ip", this.getPublicIP());
         params.put("active", this.getActiveString());
-
-        String res = this.getRequest(this.serverAddress + "setActive.php", params);
-        // System.out.println(res);
-        return res.contains("success");
+        return this.getRequest(this.serverAddress + "setActive.php", params).contains("success");
     }
 
+    /**
+     * Quickly set self to inactive on SQL DB don't wait for response
+     * @param username - username to set active
+     */
     public boolean setInactive(String username){
         Map<String, String> params = new HashMap<>();
         params.put("username", username);
         params.put("ip", this.getPrivateIP());
         params.put("ex_ip", this.getPublicIP());
         params.put("active", this.getActiveString());
-        String res = this.getRequest(this.serverAddress + "setInactive.php", params);
-        // System.out.println(res);
-        return res.contains("success");
+        return this.getRequest(this.serverAddress + "setInactive.php", params).contains("success");
     }
 
     /**
@@ -147,6 +152,7 @@ public class FileTransferServerClient {
         try {
             parameters.put("ip", this.getPrivateIP());
         } catch (Exception e) {
+            e.printStackTrace();
             parameters.put("ip", "unknown");
         }
 
@@ -179,6 +185,7 @@ public class FileTransferServerClient {
             try {
                 parameters.put("ip", this.getPrivateIP());
             } catch (Exception e) {
+                e.printStackTrace();
                 parameters.put("ip", "unknown");
             }
         }
@@ -215,6 +222,7 @@ public class FileTransferServerClient {
             try {
                 parameters.put("ip", InetAddress.getLocalHost().getHostAddress());
             } catch (Exception e) {
+                e.printStackTrace();
                 parameters.put("ip", "unknown");
             }
         }
@@ -259,6 +267,7 @@ public class FileTransferServerClient {
         try {
             parameters.put("ip", InetAddress.getLocalHost().getHostAddress());
         } catch (Exception e) {
+            e.printStackTrace();
             parameters.put("ip", "unknown");
         }
         parameters.put("active", this.getActiveString());
@@ -380,6 +389,7 @@ public class FileTransferServerClient {
 
     // #endregion pull region
 
+
     /**
      * Returns the String returned by a GET request to {@code urlString} with
      * parameters {@code parameters}
@@ -483,28 +493,6 @@ public class FileTransferServerClient {
         }
         activeBuilder.append(localTime.getMinute());
         return activeBuilder.toString();
-    }
-
-    public static void main(String args[]) {
-
-        FileTransferServerClient ftsc = new FileTransferServerClient();
-        if (ftsc.setActive("AdamFuller")){
-            System.out.println("Set active");
-        } else {
-            System.out.println("Failed");
-        }
-        // ftsc.delete("sample_username");
-        // try {
-        // ftsc.pullString();
-        // } catch (Exception e) {
-        // e.printStackTrace();
-        // ftsc.create();
-        // }
-
-        // System.out.println(ftsc.pull("sample_username", "nonexistenttable").size());
-
-        return;
-
     }
 
 }

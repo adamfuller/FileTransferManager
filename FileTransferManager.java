@@ -144,7 +144,12 @@ public class FileTransferManager {
             } // update failed for some reason
             // System.out.println("Array was not empty");
         }
-        this.setActive(); // set self as active
+
+        if (didSucceed){
+            this.setActive(); // set self as active
+        } else {
+            System.out.println("Didn't set active");
+        }
         return didSucceed;
     }
 
@@ -219,8 +224,8 @@ public class FileTransferManager {
         ArrayList<QueryResult> results = this.fileTransferServerClient.getActive();
         results.forEach((result) -> {
             clients.put(result.username, result.ip);
-
         });
+        clients.remove(this.getUsername());
         return clients;
     }
 
@@ -345,6 +350,11 @@ public class FileTransferManager {
         fileTransferManager.newThread((NULL)->{
             System.out.println("Started new thread");
             Map<String, String> locals = fileTransferManager.getLocalClients();
+            if (locals.size() == 0){
+                clientsBox.removeAllItems();
+                clientsBox.addItem("No Local Clients");
+                return;
+            }
             clients.clear();
             locals.forEach((key, value)->{
                 clients.put(key, value);
@@ -363,8 +373,11 @@ public class FileTransferManager {
         final Timer clientUpdateTimer = new Timer(30000, (n)->{
             fileTransferManager.newThread((NULL)->{            
                 Map<String, String> locals = fileTransferManager.getLocalClients();
+                if (locals.size() == 0){
+                    return;
+                }
                 clients.clear();
-                locals.forEach((key, value)->{
+                locals.forEach((key, value)->{    
                     clients.put(key, value);
                 });
                 clientsBox.removeAllItems();
@@ -411,7 +424,9 @@ public class FileTransferManager {
             if (fileTransferManager.isListening){
                 fileTransferManager.stopListening();
             }
-            fileTransferManager.sendFile(prompt, (JButton) a.getSource(), clients.get(clientsBox.getSelectedItem()));
+            if (clients.containsKey(clientsBox.getSelectedItem())){
+                fileTransferManager.sendFile(prompt, (JButton) a.getSource(), clients.get(clientsBox.getSelectedItem()));
+            }
         });
 
         yesButton.addActionListener((a) -> {

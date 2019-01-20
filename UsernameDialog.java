@@ -53,7 +53,7 @@ public class UsernameDialog implements Serializable{
         JButton cancelButton = new JButton("cancel");
 
         okButton.addActionListener((a)->{
-            this.selectedUsername = usernameInput.getText() != null ? usernameInput.getText() : "";
+            this.selectedUsername = usernameInput.getText() != null ? usernameInput.getText().replace("." , "").replace(" ", "_").replace("\\", "") : "";
             this.hasSelectedUsername = true;
             if (onComplete!= null){
                 onComplete.accept(this);
