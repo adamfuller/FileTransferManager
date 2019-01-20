@@ -1,4 +1,5 @@
 import java.awt.Container;
+import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.io.File;
 import java.util.ArrayList;
@@ -339,6 +340,9 @@ public class FileTransferManager {
         FileTransferManager fileTransferManager = new FileTransferManager(false);
         JLabel prompt = new JLabel("Welcome to the File Transfer Manager");
         JComboBox<String> clientsBox = new JComboBox<>();
+        Dimension d = clientsBox.getMinimumSize();
+        d.setSize(100, 50);
+        clientsBox.setMinimumSize(d);
         final Map<String, String> clients = new HashMap<>();
         JButton fileSendButton = new JButton("Send File");
         JButton yesButton = new JButton("Yes");
