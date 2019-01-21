@@ -447,11 +447,12 @@ public class FileTransferServerClient {
         try {
             for (Map.Entry<String, String> entry : params.entrySet()) {
                 // System.out.println("KEY: " + entry.getKey() + " VALUE: " + entry.getValue());
-                result.append(URLEncoder.encode(entry.getKey(), "UTF-8"));
-                result.append("=");
-                result.append(URLEncoder.encode(entry.getValue(), "UTF-8"));
-                result.append("&");
-
+                if (entry.getKey() != null && entry.getValue() != null){
+                    result.append(URLEncoder.encode(entry.getKey(), "UTF-8"));
+                    result.append("=");
+                    result.append(URLEncoder.encode(entry.getValue(), "UTF-8"));
+                    result.append("&");
+                }
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -469,6 +470,9 @@ public class FileTransferServerClient {
      */
     public ArrayList<QueryResult> parsePullResults(String resultsString) {
         ArrayList<QueryResult> results = new ArrayList<>();
+        if (resultsString == null){
+            return results;
+        }
         if (resultsString.contains("[") && resultsString.contains("]")) {
             resultsString = resultsString.substring(resultsString.indexOf("[") + 1, resultsString.indexOf("]"));
         }
