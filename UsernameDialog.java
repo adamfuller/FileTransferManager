@@ -13,6 +13,7 @@ import javax.swing.JTextField;
 import javax.swing.SpringLayout;
 
 public class UsernameDialog implements Serializable{
+    private static final long serialVersionUID = 120494893; // why not?
     private String selectedUsername, saveLocation;
     private boolean hasSelectedUsername = false;
     private String savename = "usernameDialog.sav";

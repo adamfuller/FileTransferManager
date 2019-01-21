@@ -12,6 +12,7 @@ import javax.swing.Timer;
 
 
 public class ControlledWindowJFrame extends JFrame implements WindowListener, WindowFocusListener, WindowStateListener{
+    private static final long serialVersionUID = 120494853; // why not?
     private Consumer<Object> onClose;
 
     public ControlledWindowJFrame(String name){
