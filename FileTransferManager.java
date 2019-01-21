@@ -209,7 +209,7 @@ public class FileTransferManager {
      * @return true if stopped listening
      */
     public boolean stopListening(){
-        newThread((n)->{this.fileTransferServerClient.setInactive(this.getUsername());});
+        newThread((n)->{fileTransferServerClient.setInactive(getUsername());});
         boolean res = this.fileTransferReceiver.stopListening();
         this.isListening = !res;
         return res;

@@ -19,14 +19,25 @@ import java.util.Map;
 
 public class FileTransferServerClient {
     private final String serverAddress = "http://prattpi.hopto.org/FileTransferServer/";
-
+    private String externalIP;
     /**
      * Obtain the external/public ip address of the network this device is on
      * 
      * @return String representation of the ip address
      */
     public String getPublicIP() {
-        return this.getRequest(this.serverAddress + "getIP.php", new HashMap<>());
+        String exIP = null;
+        for (int i = 0; i<10; i++){
+            exIP = this.getRequest(this.serverAddress + "getIP.php", new HashMap<>());
+            if (exIP != null){
+                this.externalIP = exIP; // update when possible
+                break;
+            } else if (this.externalIP != null){
+                exIP = this.externalIP; // shorten number of requests
+                break;
+            }
+        }
+        return exIP;
     }
 
     /**
@@ -190,7 +201,7 @@ public class FileTransferServerClient {
             }
         }
         if (!parameters.containsKey("mask")) {
-            parameters.put("mask", "0");
+            parameters.put("mask", "1"); // set mask as simply active
         }
         if (!parameters.containsKey("active")) {
             parameters.put("active", this.getActiveString());
@@ -231,8 +242,13 @@ public class FileTransferServerClient {
         }
 
         String requestResults = this.getRequest(this.serverAddress + "update.php", parameters);
-        if (requestResults.contains("doesn't exist")){ // this table doesn't exist yet
+        if (requestResults == null){ // this table doesn't exist yet
             // maybe throw an exception here?
+            System.out.println("Request for update returned null");
+            System.out.println(parameters.toString());
+        } else if (requestResults.contains("doesn't exist")){
+            System.out.println("Table doesn't exist in update request");
+            System.out.println(parameters.toString());
         }
         return (requestResults != null ? requestResults.contains("success") : false);
     }
@@ -403,9 +419,9 @@ public class FileTransferServerClient {
             URL url = new URL(urlString);
             HttpURLConnection con = (HttpURLConnection) url.openConnection();
             con.setRequestMethod("GET");
-
+            
             con.setDoOutput(true);
-
+            
             DataOutputStream outputStream = new DataOutputStream(con.getOutputStream());
 
             if (parameters != null) {
